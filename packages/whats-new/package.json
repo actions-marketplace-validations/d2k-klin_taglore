@@ -1,6 +1,6 @@
 {
   "name": "@taglore/whats-new",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "What's New dialog for Taglore release notes: a React component and a framework-free <taglore-whats-new> web component for any frontend.",
   "license": "MIT",
   "type": "module",

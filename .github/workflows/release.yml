@@ -29,6 +29,9 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          # Optional: a fine-grained PAT (Contents + Workflows: write) lets the vX major tag move even when
+          # workflow files changed since the last release. The default token cannot update such refs.
+          token: ${{ secrets.RELEASE_TOKEN || github.token }}
 
       - id: version
         name: Determine release tag
@@ -81,4 +84,6 @@ jobs:
         run: |
           MAJOR="${TAG%%.*}"
           git tag -f "$MAJOR" "$TAG^{commit}"
-          git push -f origin "refs/tags/$MAJOR"
+          if ! git push -f origin "refs/tags/$MAJOR"; then
+            echo "::warning::Could not move $MAJOR to $TAG (workflow files changed and the token lacks the workflows permission). Add a RELEASE_TOKEN secret, or run: git tag -f $MAJOR $TAG && git push -f origin $MAJOR"
+          fi

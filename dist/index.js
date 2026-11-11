@@ -235,7 +235,7 @@ ${i}
 `}e.compareUrl&&(r+=`**Full changelog:** ${e.compareUrl}
 
 `);let n=t.generator.provider==="fallback"?"generated from commit messages":`written with AI (${t.generator.provider})`;return r+=`<sub>Release notes ${n} by [Taglore](https://github.com/d2k-klin/taglore).</sub>
-`,r}var j9="1.0.0";var a4t=`{
+`,r}var j9="1.0.1";var a4t=`{
   "title": "short headline for this release (max 100 chars)",
   "summary": "2-3 sentences for end users",
   "highlights": [{ "title": "...", "description": "..." }],

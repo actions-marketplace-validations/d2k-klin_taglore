@@ -1,0 +1,34 @@
+# Manually generate notes between any two refs (tags, SHAs, branches) without touching Releases.
+name: Release notes (manual compare)
+
+on:
+  workflow_dispatch:
+    inputs:
+      from:
+        description: Base ref, e.g. v1.7.0
+        required: true
+      to:
+        description: Target ref, e.g. v1.9.0
+        required: true
+      publish:
+        description: Update the GitHub Release of "to"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  notes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: d2k-klin/tagore@v1
+        with:
+          copilot-token: ${{ secrets.COPILOT_TOKEN }}
+          from: ${{ inputs.from }}
+          to: ${{ inputs.to }}
+          publish-github-release: ${{ inputs.publish }}
+          upload-artifact: true

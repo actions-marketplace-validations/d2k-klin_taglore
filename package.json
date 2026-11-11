@@ -1,0 +1,25 @@
+{
+  "name": "tagore-monorepo",
+  "private": true,
+  "type": "module",
+  "description": "Tagore: AI-written release notes from git tags, published to GitHub Releases, Docker builds, S3 and an in-app What's New dialog.",
+  "license": "MIT",
+  "workspaces": [
+    "packages/tagore",
+    "packages/whats-new"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "npm run build -w tagore && npm run build -w @tagore/whats-new && npm run bundle && npm run schema",
+    "bundle": "node scripts/bundle-action.mjs",
+    "schema": "node scripts/generate-schema.mjs",
+    "typecheck": "npm run typecheck -w tagore && npm run typecheck -w @tagore/whats-new",
+    "test": "npm test -w tagore && npm test -w @tagore/whats-new",
+    "check-dist": "npm run bundle && npm run schema && git diff --exit-code -- dist schema"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}

@@ -1,0 +1,41 @@
+# Next.js: release notes into the Docker image, served at /releases/latest.json.
+# Add the Tagore step to your EXISTING tag workflow, before docker build.
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - id: notes
+        uses: d2k-klin/tagore@v1
+        with:
+          copilot-token: ${{ secrets.COPILOT_TOKEN }}
+          output-dir: public/releases   # latest.json, release.json, RELEASE_NOTES.md
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository }}:${{ github.ref_name }}
+          labels: |
+            org.opencontainers.image.version=${{ steps.notes.outputs.version }}
+
+      # ... your existing deploy steps

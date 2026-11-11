@@ -1,0 +1,35 @@
+# Generate once, use the files in another job (e.g. a Docker build on a different runner).
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  notes:
+    runs-on: ubuntu-latest
+    outputs:
+      announce: ${{ steps.notes.outputs.announce }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - id: notes
+        uses: d2k-klin/tagore@v1
+        with:
+          copilot-token: ${{ secrets.COPILOT_TOKEN }}
+          upload-artifact: release-notes
+
+  build:
+    needs: notes
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v5
+        with:
+          name: release-notes
+          path: public/releases
+      - run: docker build -t myapp:${{ github.ref_name }} .

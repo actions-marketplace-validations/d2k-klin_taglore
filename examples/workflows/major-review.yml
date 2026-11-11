@@ -1,0 +1,31 @@
+# Major releases: create the GitHub Release as a draft so a human can review the announcement.
+# Minor and patch releases publish directly.
+name: Release notes
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release-notes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - id: kind
+        run: |
+          if [[ "${GITHUB_REF_NAME}" =~ ^v[0-9]+\.0\.0$ ]]; then echo "major=true" >> "$GITHUB_OUTPUT"; else echo "major=false" >> "$GITHUB_OUTPUT"; fi
+
+      - uses: d2k-klin/tagore@v1
+        with:
+          copilot-token: ${{ secrets.COPILOT_TOKEN }}
+          release-draft: ${{ steps.kind.outputs.major }}
+
+# Alternative: put the job that builds and deploys the image in an Environment
+# (Settings > Environments) with required reviewers, and gate it on
+# steps.notes.outputs.announce == 'true'.

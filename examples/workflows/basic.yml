@@ -1,0 +1,24 @@
+# Release notes on GitHub Releases for every v* tag.
+name: Release notes
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+  # Organization repos: uncomment and drop copilot-token below.
+  # copilot-requests: write
+
+jobs:
+  release-notes:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: d2k-klin/tagore@v1
+        with:
+          # Personal repos: fine-grained PAT with the "Copilot Requests" permission.
+          copilot-token: ${{ secrets.COPILOT_TOKEN }}

@@ -1,0 +1,149 @@
+name: Tagore Release Notes
+description: AI-written release notes from git tags, for GitHub Releases, Docker builds, artifacts, S3 and in-app What's New.
+author: d2k-klin
+branding:
+  icon: book-open
+  color: orange
+
+inputs:
+  # Versions
+  to:
+    description: Release tag. Default is the tag that triggered the workflow.
+    required: false
+  from:
+    description: Base ref to compare against. Setting it switches compare to explicit.
+    required: false
+  compare:
+    description: "auto | previous-tag | previous-minor | previous-major | explicit. auto = patch vs previous tag, minor/major vs previous minor."
+    required: false
+    default: auto
+  tag-prefix:
+    description: Tag prefix.
+    required: false
+    default: v
+
+  # AI
+  ai-provider:
+    description: "copilot | github-models | none"
+    required: false
+    default: copilot
+  model:
+    description: Model id for the provider. Copilot uses its default when empty; GitHub Models defaults to openai/gpt-4.1-mini.
+    required: false
+  copilot-token:
+    description: Fine-grained PAT with the "Copilot Requests" permission. Needed on personal repos; on org repos the workflow token works when the org bills Copilot CLI.
+    required: false
+  copilot-version:
+    description: "@github/copilot version to install when copilot is not on PATH."
+    required: false
+    default: latest
+  copilot-args:
+    description: Extra Copilot CLI arguments, comma or newline separated. Tagore allows no tools by default.
+    required: false
+  ai-for:
+    description: Release types that get AI-written notes. Others get notes from commit messages.
+    required: false
+    default: major,minor
+  on-ai-failure:
+    description: "fallback (commit-based notes, keep going) | fail"
+    required: false
+    default: fallback
+  language:
+    description: Language of the notes.
+    required: false
+    default: English
+  tone:
+    description: Tone of the notes.
+    required: false
+    default: friendly and concise
+  audience:
+    description: Who reads the notes.
+    required: false
+    default: end users of the application
+  product-name:
+    description: Product name used in the prompt. Default is the repository name.
+    required: false
+  instructions:
+    description: Extra guidance for the AI (terminology, things to never mention, etc.).
+    required: false
+  exclude:
+    description: Extra glob patterns kept out of the AI context, comma or newline separated. Lockfiles, build output, images and .env files are always excluded.
+    required: false
+  max-diff-kb:
+    description: Maximum diff size sent to the AI. Default 100 (copilot) or 20 (github-models).
+    required: false
+
+  # Outputs
+  publish-github-release:
+    description: Create or update the GitHub Release for the tag and attach tagore.json.
+    required: false
+    default: "true"
+  release-draft:
+    description: Create new releases as drafts (useful for reviewing major releases).
+    required: false
+    default: "false"
+  include-commits:
+    description: Add a collapsible commit list to the Markdown.
+    required: false
+    default: "true"
+  output-dir:
+    description: Write latest.json, release.json and RELEASE_NOTES.md to this folder, e.g. public/releases for a Next.js Docker build.
+    required: false
+  upload-artifact:
+    description: Upload the files as a workflow artifact. "true" uses the name tagore-release-notes, any other value is the artifact name.
+    required: false
+    default: "false"
+  s3-uri:
+    description: Upload the files to s3://bucket/prefix/. Uses AWS credentials already configured in the job (OIDC recommended).
+    required: false
+  s3-region:
+    description: AWS region for S3. Default is the region from the AWS environment.
+    required: false
+  announce-on:
+    description: Release types that create a new in-app announcement (latest.json). Other releases reuse the last announced one.
+    required: false
+    default: major,minor
+  baseline-file:
+    description: Path to an existing tagore.json to use as latest.json for releases that don't announce. Default is to download it from the earlier GitHub Release.
+    required: false
+  dry-run:
+    description: Generate and print, publish nothing.
+    required: false
+    default: "false"
+  github-token:
+    description: Token for GitHub Releases (contents write) and GitHub Models (models read).
+    required: false
+    default: ${{ github.token }}
+  working-directory:
+    description: Repository folder.
+    required: false
+
+outputs:
+  version:
+    description: Release version (tag).
+  previous-version:
+    description: Version compared against (empty for the first release).
+  release-type:
+    description: major | minor | patch | prerelease
+  announce:
+    description: "true when this release creates a new in-app announcement"
+  provider:
+    description: Who wrote the notes (copilot, github-models or fallback).
+  release-url:
+    description: URL of the GitHub Release.
+  markdown:
+    description: Release notes as Markdown.
+  json:
+    description: Release notes as JSON (release.json content).
+  latest-json-path:
+    description: Path of latest.json when output-dir is set.
+  release-json-path:
+    description: Path of release.json when output-dir is set.
+  markdown-path:
+    description: Path of RELEASE_NOTES.md when output-dir is set.
+  artifact-name:
+    description: Name of the uploaded artifact.
+
+runs:
+  using: node24
+  main: dist/index.js

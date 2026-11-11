@@ -1,0 +1,55 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: dist/ and schema/ are up to date
+        run: |
+          if ! git diff --exit-code -- dist schema; then
+            echo "::error::dist/ or schema/ is stale. Run 'npm run build' and commit the result."
+            exit 1
+          fi
+
+  action-smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Create a throwaway repo with tags
+        run: |
+          mkdir -p "$RUNNER_TEMP/demo" && cd "$RUNNER_TEMP/demo"
+          git init -q -b main && git config user.email ci@example.com && git config user.name ci
+          echo 1 > a && git add . && git commit -qm "feat: first feature" && git tag v1.0.0
+          echo 2 > b && git add . && git commit -qm "fix: a bug" && git tag v1.0.1
+          echo 3 > c && git add . && git commit -qm "feat(search): fuzzy search" && git tag v1.1.0
+      - id: notes
+        uses: ./
+        with:
+          working-directory: ${{ runner.temp }}/demo
+          to: v1.1.0
+          ai-provider: none
+          publish-github-release: false
+          output-dir: out
+      - run: |
+          test "${{ steps.notes.outputs.previous-version }}" = "v1.0.0"
+          test "${{ steps.notes.outputs.announce }}" = "true"
+          test -f "$RUNNER_TEMP/demo/out/latest.json"

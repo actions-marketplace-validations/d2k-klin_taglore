@@ -1,0 +1,31 @@
+# Tagore releases itself: notes written by Tagore, then the vX major tag is moved.
+name: Release
+
+on:
+  push:
+    tags: ["v*.*.*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: ./
+        with:
+          # Optional secret. Without it, Copilot calls fail and Tagore falls back to commit-based notes.
+          copilot-token: ${{ secrets.COPILOT_TOKEN }}
+          product-name: Tagore
+          audience: developers who use the Tagore GitHub Action and CLI
+
+      - name: Move major tag
+        if: ${{ !contains(github.ref_name, '-') }}
+        run: |
+          MAJOR="${GITHUB_REF_NAME%%.*}"
+          git tag -f "$MAJOR" "$GITHUB_REF_NAME"
+          git push -f origin "refs/tags/$MAJOR"

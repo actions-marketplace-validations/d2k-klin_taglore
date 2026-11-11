@@ -31,5 +31,5 @@ jobs:
       - uses: actions/download-artifact@v5
         with:
           name: release-notes
-          path: public/releases
+          path: release-notes
       - run: docker build -t myapp:${{ github.ref_name }} .

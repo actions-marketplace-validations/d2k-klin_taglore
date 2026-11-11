@@ -1,4 +1,4 @@
-/* Optional default look for <WhatsNew />. Override the custom properties or write your own. */
+/* Default look for the React <WhatsNew /> and <taglore-whats-new>. Override the custom properties or write your own. */
 .taglore-wn {
   --taglore-wn-bg: #fff;
   --taglore-wn-fg: #111827;

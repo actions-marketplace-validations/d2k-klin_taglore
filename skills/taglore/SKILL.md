@@ -1,6 +1,6 @@
 ---
 name: taglore
-description: Set up, configure or troubleshoot Taglore (d2k-klin/taglore), the GitHub Action and CLI that writes AI release notes from git tags and publishes them to GitHub Releases, a Docker build folder, artifacts, S3 and an in-app What's New dialog. Use when asked to add release notes automation, a What's New dialog, or Taglore to a repository.
+description: Set up, configure or troubleshoot Taglore (d2k-klin/taglore), the GitHub Action and CLI that writes AI release notes from git tags and publishes them to GitHub Releases, a Docker build folder, artifacts, S3 and an in-app What's New dialog. Works with apps in any language. Use when asked to add release notes automation, a What's New dialog, or Taglore to a repository.
 ---
 
 # Taglore: AI release notes from git tags
@@ -16,7 +16,7 @@ Before writing anything, find out:
 1. **Tag style.** Run `git tag --list | tail -20`. Taglore expects SemVer tags with a prefix (default `v`). For prefixes like `web-v1.2.3`, set `tag-prefix: web-v`. If there are no tags, tell the user Taglore needs releases tagged `vX.Y.Z`.
 2. **Existing release workflow.** Look in `.github/workflows/` for a workflow triggered by `push: tags`. If one exists (Docker build, deploy), add Taglore as a step **before** the Docker build in that workflow. Do not create a second tag-triggered workflow that races it.
 3. **Account type.** Personal repo or organization repo. This decides Copilot auth (step 3).
-4. **App type.** Next.js (look for `next.config.*`), other React app, or no frontend. Only add the What's New component when there is a React frontend and the user wants in-app announcements.
+4. **Stack.** Find the language and how the app serves static files: `Dockerfile`, `package.json`, `pyproject.toml`/`requirements.txt`, `go.mod`, `pom.xml`/`build.gradle`, `*.csproj`, `composer.json`, `nginx.conf`. Taglore works with any of them; the stack only decides where `output-dir` points and how the JSON is served (step 4).
 5. **Where the notes should go.** Ask only if unclear: GitHub Release only (default), into the Docker image, as an artifact, and/or S3.
 
 ## 2. Add the workflow step
@@ -47,7 +47,7 @@ Pick the extra inputs from what the user needs:
 
 | Need | Inputs |
 |---|---|
-| Notes inside a Next.js Docker image | `output-dir: public/releases` (step runs before `docker build`) |
+| Notes inside the Docker image | `output-dir: release-notes` (or the app's static folder, see step 4); the step runs before `docker build` |
 | Hand files to another job | `upload-artifact: release-notes`, then `actions/download-artifact` in that job |
 | Upload to S3 | `aws-actions/configure-aws-credentials` with an OIDC role first, `permissions: id-token: write`, then `s3-uri: s3://bucket/prefix/` |
 | Compare specific versions | `from: v1.7.0` and `to: v1.9.0` (any refs; switches to explicit compare) |
@@ -56,7 +56,7 @@ Pick the extra inputs from what the user needs:
 | Different language or voice | `language`, `tone`, `audience`, `product-name`, `instructions` |
 | Keep paths away from the AI | `exclude: "infra/**, **/*.sql"` (lockfiles, build output, images, `.env*`, keys are always excluded) |
 
-Ready-made workflows to copy and adapt live in `examples/workflows/` of the Taglore repo: `basic.yml`, `nextjs-docker.yml`, `artifact.yml`, `s3.yml`, `compare-explicit.yml`, `major-review.yml`.
+Ready-made workflows to copy and adapt live in `examples/workflows/` of the Taglore repo: `basic.yml`, `docker.yml`, `artifact.yml`, `s3.yml`, `compare-explicit.yml`, `major-review.yml`.
 
 ## 3. Copilot authentication
 
@@ -66,35 +66,52 @@ Ready-made workflows to copy and adapt live in `examples/workflows/` of the Tagl
 
 Never put tokens in the workflow file. If generation fails, Taglore falls back to commit-based notes and the release continues (`on-ai-failure: fail` to stop instead).
 
-## 4. In-app What's New (React / Next.js)
+## 4. Ship and show the notes in the app (any language)
 
-Only when the notes are in the image (`output-dir: public/releases`) or on S3/CDN.
+Only when the user wants notes inside the app. Taglore writes plain files; the app just needs to serve or read them.
 
-1. `npm install @taglore/whats-new`
-2. Create a client component:
+**a) Get the files into the image.** Pick `output-dir` from the stack, and make sure the Dockerfile copies it into the final stage and `.dockerignore` doesn't exclude it.
 
-```tsx
-// app/whats-new.tsx
-"use client";
-import { WhatsNew } from "@taglore/whats-new";
-import "@taglore/whats-new/styles.css";
+| Stack | `output-dir` | Dockerfile / serving |
+|---|---|---|
+| nginx / static SPA | `release-notes` | `COPY release-notes/ /usr/share/nginx/html/release-notes/` |
+| Node.js (Express, Fastify, Nest) | `release-notes` | `COPY release-notes/ ./release-notes/` + static middleware |
+| Python (FastAPI, Flask, Django) | `release-notes` | `COPY release-notes/ ./release-notes/` + static mount or `json.load` |
+| Go | `release-notes` (next to `main.go`) | `//go:embed release-notes`, serve with `http.FileServer` |
+| Java / Spring Boot | `src/main/resources/static/release-notes` | served automatically, nothing to copy |
+| .NET / ASP.NET Core | `release-notes` | `COPY release-notes/ ./wwwroot/release-notes/` + `UseStaticFiles()` |
+| PHP / Laravel | `public/release-notes` | served from `public/` |
+| Next.js | `public/release-notes` | standalone Dockerfiles already copy `public/` |
 
-export default function AppWhatsNew() {
-  return <WhatsNew storageKey="<app-name>:whats-new" />;
-}
-```
+Target URL in all cases: `GET /release-notes/latest.json`. Copy the matching example from `examples/apps/<stack>/` in the Taglore repo. If notes go to S3/CDN instead, use that URL.
 
-3. Render `<AppWhatsNew />` once in the root layout (`app/layout.tsx`), inside `<body>`.
-4. If notes come from S3/CDN, pass `url="https://cdn.example.com/app/releases/latest.json"`.
-5. To match an existing design system (shadcn/ui, MUI), use the headless form instead of the default dialog:
+**b) Show the dialog.** Pick by frontend:
 
-```tsx
-<WhatsNew>{({ notes, open, dismiss }) => /* render your own Dialog */ null}</WhatsNew>
-```
+- **Any HTML frontend** (server templates, Vue, Angular, Svelte, plain HTML): add once to the main layout/template:
 
-Behaviour to explain to the user: each major/minor announcement shows once per browser; acknowledgment is stored in `localStorage` under `storageKey`; first-time visitors are marked up to date silently unless `showOnFirstVisit` is set; patch releases never re-announce.
+  ```html
+  <script type="module" src="https://cdn.jsdelivr.net/npm/@taglore/whats-new@1/dist/element.js"></script>
+  <taglore-whats-new src="/release-notes/latest.json" storage-key="<app-name>:whats-new"></taglore-whats-new>
+  ```
 
-**Docker check:** make sure `public/` is copied into the final image (standard Next.js standalone Dockerfiles do `COPY --from=builder /app/public ./public`) and that `.dockerignore` does not exclude `public/releases`.
+  Attributes: `show-on-first-visit`, `compact`, `unstyled`, `label-heading`, `label-close` etc. `element.show()` reopens it from a menu item.
+
+- **React / Next.js:** `npm install @taglore/whats-new`, then render once in the root layout (client component):
+
+  ```tsx
+  "use client";
+  import { WhatsNew } from "@taglore/whats-new";
+  import "@taglore/whats-new/styles.css";
+  export default function AppWhatsNew() {
+    return <WhatsNew url="/release-notes/latest.json" storageKey="<app-name>:whats-new" />;
+  }
+  ```
+
+  For a design system (shadcn/ui, MUI), use the render prop: `<WhatsNew>{({ notes, open, dismiss }) => ...}</WhatsNew>`.
+
+- **Mobile, desktop or anything else:** fetch `latest.json`; show it when `announce` is true and `version` is newer than the version stored as last seen; store `version` when the user dismisses it. Render all fields as plain text. Generate types from `schema/release.schema.json`.
+
+Behaviour to explain to the user: each major/minor announcement shows once per browser/device; first-time users are marked up to date silently unless `show-on-first-visit` is set; patch releases never re-announce.
 
 ## 5. Verify
 

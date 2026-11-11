@@ -1,4 +1,4 @@
-# Standard Next.js standalone image. Taglore writes public/releases/* before this build runs.
+# Standard Next.js standalone image. Taglore writes public/release-notes/* before this build runs.
 FROM node:24-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
@@ -16,7 +16,7 @@ ENV NODE_ENV=production
 RUN addgroup -S app && adduser -S app -G app
 COPY --from=builder --chown=app:app /app/.next/standalone ./
 COPY --from=builder --chown=app:app /app/.next/static ./.next/static
-# public/ includes releases/latest.json -> GET /releases/latest.json
+# public/ includes release-notes/latest.json -> GET /release-notes/latest.json
 COPY --from=builder --chown=app:app /app/public ./public
 USER app
 EXPOSE 3000

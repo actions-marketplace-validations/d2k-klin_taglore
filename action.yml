@@ -87,7 +87,7 @@ inputs:
     required: false
     default: "true"
   output-dir:
-    description: Write latest.json, release.json and RELEASE_NOTES.md to this folder, e.g. public/releases for a Next.js Docker build.
+    description: Write latest.json, release.json and RELEASE_NOTES.md to this folder, inside the Docker build context, e.g. release-notes (copy it in your Dockerfile) or public/release-notes (Next.js).
     required: false
   upload-artifact:
     description: Upload the files as a workflow artifact. "true" uses the name taglore-release-notes, any other value is the artifact name.

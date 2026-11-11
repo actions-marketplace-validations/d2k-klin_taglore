@@ -8,7 +8,7 @@ export default function AppWhatsNew() {
   return (
     <WhatsNew
       storageKey="myapp:whats-new"
-      // url="https://cdn.example.com/myapp/releases/latest.json"  // when notes live on S3/CDN
+      // url="https://cdn.example.com/myapp/release-notes/latest.json"  // when notes live on S3/CDN
       labels={{ heading: "What's new", close: "Got it" }}
     />
   );

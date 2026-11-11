@@ -3,12 +3,12 @@
 **AI-written release notes from git tags.** Push `v1.9.0`, and Taglore compares it with the right earlier version, has GitHub Copilot write user-friendly notes, and publishes them to:
 
 - **GitHub Releases** (Markdown, by default)
-- **a folder** for your Docker build, e.g. `public/releases/latest.json` in a Next.js app
+- **a folder** in your Docker build context, so the image carries its own `latest.json`
 - **a workflow artifact** for a later job
 - **S3** for apps or CDNs that fetch notes at runtime
-- **your app's What's New dialog** via [`@taglore/whats-new`](packages/whats-new)
+- **your app's What's New dialog**, in any stack: a [web component](examples/apps/any-frontend) for any frontend, a [React component](packages/whats-new), or a few lines of code in your backend
 
-No database, no SaaS, no AI calls at runtime. Notes ship with the image they describe.
+It works with any language. Taglore writes plain JSON and Markdown files; Node, Python, Go, Java, .NET, PHP or a static nginx site can all serve or read them. No database, no SaaS, no AI calls at runtime. Notes ship with the image they describe.
 
 ```yaml
 # .github/workflows/release-notes.yml
@@ -62,7 +62,7 @@ If the AI call fails, Taglore falls back to commit-based notes and keeps your re
 
 ## Recipes
 
-### Next.js + Docker
+### Docker, any language
 
 ```yaml
       - uses: actions/checkout@v6
@@ -71,24 +71,39 @@ If the AI call fails, Taglore falls back to commit-based notes and keeps your re
         uses: d2k-klin/taglore@v1
         with:
           copilot-token: ${{ secrets.COPILOT_TOKEN }}
-          output-dir: public/releases
+          output-dir: release-notes          # inside the build context
       - run: docker build -t ghcr.io/${{ github.repository }}:${{ github.ref_name }} .
 ```
 
-The image then serves `GET /releases/latest.json`. Show it with:
+```dockerfile
+# In your Dockerfile: put the files where your app serves static files or reads config
+COPY release-notes/ /app/release-notes/
+```
+
+The container then serves `GET /release-notes/latest.json` (or your code reads it from disk). Ready-made setups for **nginx, Node.js, Python, Go, Java/Spring, .NET and Next.js** are in [examples/apps](examples/apps).
+
+### What's New dialog in the frontend
+
+Any frontend (plain HTML, server templates, Vue, Angular, Svelte):
+
+```html
+<script type="module" src="https://cdn.jsdelivr.net/npm/@taglore/whats-new@1/dist/element.js"></script>
+<taglore-whats-new src="/release-notes/latest.json" storage-key="myapp:whats-new"></taglore-whats-new>
+```
+
+React / Next.js:
 
 ```tsx
-// app/whats-new.tsx
 "use client";
 import { WhatsNew } from "@taglore/whats-new";
 import "@taglore/whats-new/styles.css";
 
 export default function AppWhatsNew() {
-  return <WhatsNew storageKey="myapp:whats-new" />;
+  return <WhatsNew url="/release-notes/latest.json" storageKey="myapp:whats-new" />;
 }
 ```
 
-Render `<AppWhatsNew />` once in your root layout. Users see each major/minor announcement once; new users start up to date (`showOnFirstVisit` to change that). Use the `useWhatsNew()` hook or the `children` render prop to plug into your own dialog (shadcn/ui etc.). See [examples/nextjs](examples/nextjs).
+Both show each major/minor announcement once per browser; new visitors start up to date (`show-on-first-visit` / `showOnFirstVisit` to change that). For mobile, desktop or other clients: show the announcement when `announce` is `true` and `version` is newer than the one the user last saw.
 
 ### S3
 
@@ -99,7 +114,7 @@ Render `<AppWhatsNew />` once in your root layout. Users see each major/minor an
           aws-region: eu-central-1
       - uses: d2k-klin/taglore@v1
         with:
-          s3-uri: s3://my-bucket/myapp/releases/
+          s3-uri: s3://my-bucket/myapp/release-notes/
 ```
 
 Needs `id-token: write` for OIDC. The role only needs `s3:PutObject` on that prefix. `latest.json` is uploaded with a 60-second cache, `release.json` as immutable.
@@ -112,7 +127,7 @@ Needs `id-token: write` for OIDC. The role only needs `s3:PutObject` on that pre
           upload-artifact: release-notes
 # later job:
       - uses: actions/download-artifact@v5
-        with: { name: release-notes, path: public/releases }
+        with: { name: release-notes, path: release-notes }
 ```
 
 ### Compare any two versions
@@ -180,7 +195,7 @@ Same engine, for local previews or other CI systems:
 
 ```bash
 npx taglore generate --to v1.9.0 --dry-run                 # preview
-npx taglore generate --from v1.7.0 --to v1.9.0 --out ./public/releases
+npx taglore generate --from v1.7.0 --to v1.9.0 --out ./release-notes
 npx taglore generate --github --repo owner/app              # publish (needs GITHUB_TOKEN)
 npx taglore --help
 ```
@@ -193,11 +208,11 @@ npx taglore --help
 | `release.json` | Structured notes for this exact release (also attached to the GitHub Release as `taglore.json`) |
 | `RELEASE_NOTES.md` | Markdown, same as the GitHub Release body |
 
-JSON follows [`schema/release.schema.json`](schema/release.schema.json): `version`, `previousVersion`, `releaseType`, `announce`, `date`, `title`, `summary`, `highlights[]`, `improvements[]`, `fixes[]`, `breaking[]`, `generator`.
+JSON follows [`schema/release.schema.json`](schema/release.schema.json): `version`, `previousVersion`, `releaseType`, `announce`, `date`, `title`, `summary`, `highlights[]`, `improvements[]`, `fixes[]`, `breaking[]`, `generator`. Generate types for your language from the schema with any JSON Schema tool.
 
 ## Security
 
-- AI output is untrusted: Taglore validates it against the schema, enforces length limits and strips HTML, links, URLs and control characters before anything is published. `@taglore/whats-new` renders plain text only.
+- AI output is untrusted: Taglore validates it against the schema, enforces length limits and strips HTML, links, URLs and control characters before anything is published. Both What's New components render plain text only; do the same in your own UI (no `innerHTML`).
 - The prompt tells the model to treat commits and code as data; Copilot runs without tools in an empty folder, so injected instructions can't run commands or read files.
 - Lockfiles, build output, binaries, images, `.env*`, `*.pem` and `*.key` never reach the AI. Add more with `exclude`.
 - Don't run Taglore on `pull_request_target` or fork-triggered workflows with secrets.
@@ -213,9 +228,9 @@ JSON follows [`schema/release.schema.json`](schema/release.schema.json): `versio
 action.yml               GitHub Action (runs dist/index.js)
 dist/                    Bundled action, committed
 packages/taglore/         Core + CLI (npm: taglore)
-packages/whats-new/      React component (npm: @taglore/whats-new)
+packages/whats-new/      What's New: web component + React (npm: @taglore/whats-new)
 schema/                  JSON schema
-examples/                Workflows and Next.js integration
+examples/                Workflows and app integrations (nginx, Node, Python, Go, Java, .NET, Next.js)
 skills/taglore/           Agent skill
 ```
 

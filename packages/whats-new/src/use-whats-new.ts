@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { compareVersions, isReleaseNotes, type ReleaseNotes } from "./types.js";
+import { DEFAULT_STORAGE_KEY, DEFAULT_URL, loadNotes, shouldShow, writeSeen } from "./core.js";
+import type { ReleaseNotes } from "./types.js";
 
 export interface UseWhatsNewOptions {
-  /** Where latest.json is served. Default: /releases/latest.json */
+  /** Where latest.json is served. Default: /release-notes/latest.json */
   url?: string;
   /** Pass notes directly (e.g. imported at build time) instead of fetching. */
   data?: ReleaseNotes | null;
@@ -27,69 +28,40 @@ export interface WhatsNewState {
   error: Error | null;
 }
 
-function read(key: string): string | null {
-  try {
-    return window.localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-function write(key: string, value: string) {
-  try {
-    window.localStorage.setItem(key, value);
-  } catch {
-    // Storage can be blocked (private mode, iframes). The dialog will simply show again next time.
-  }
-}
-
 export function useWhatsNew(options: UseWhatsNewOptions = {}): WhatsNewState {
-  const { url = "/releases/latest.json", data, storageKey = "taglore:whats-new:last-seen", showOnFirstVisit = false, enabled = true } = options;
+  const { url = DEFAULT_URL, data, storageKey = DEFAULT_STORAGE_KEY, showOnFirstVisit = false, enabled = true } = options;
   const [notes, setNotes] = useState<ReleaseNotes | null>(data ?? null);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
     if (!enabled) return;
-    let cancelled = false;
-
-    const decide = (n: ReleaseNotes) => {
-      if (!n.announce) return;
-      const lastSeen = read(storageKey);
-      if (!lastSeen) {
-        if (showOnFirstVisit) setOpen(true);
-        else write(storageKey, n.version);
-        return;
-      }
-      if (compareVersions(n.version, lastSeen) > 0) setOpen(true);
-    };
-
     if (data !== undefined) {
       setNotes(data);
-      if (data) decide(data);
+      if (data && shouldShow(data, storageKey, showOnFirstVisit)) setOpen(true);
       return;
     }
-
-    fetch(url, { cache: "no-cache" })
-      .then((r) => (r.ok ? r.json() : r.status === 404 ? null : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then((json: unknown) => {
-        if (cancelled || json === null) return;
-        if (!isReleaseNotes(json)) throw new Error("latest.json does not match the Taglore schema");
-        setNotes(json);
-        decide(json);
+    const ctrl = new AbortController();
+    loadNotes(url, ctrl.signal)
+      .then((n) => {
+        if (!n) return;
+        setNotes(n);
+        if (shouldShow(n, storageKey, showOnFirstVisit)) setOpen(true);
       })
-      .catch((e: unknown) => !cancelled && setError(e instanceof Error ? e : new Error(String(e))));
-
-    return () => {
-      cancelled = true;
-    };
+      .catch((e: unknown) => {
+        if (!ctrl.signal.aborted) setError(e instanceof Error ? e : new Error(String(e)));
+      });
+    return () => ctrl.abort();
   }, [url, data, storageKey, showOnFirstVisit, enabled]);
 
   const dismiss = useCallback(() => {
-    if (notes) write(storageKey, notes.version);
+    if (notes) writeSeen(storageKey, notes.version);
     setOpen(false);
   }, [notes, storageKey]);
 
-  const show = useCallback(() => notes && setOpen(true), [notes]);
+  const show = useCallback(() => {
+    if (notes) setOpen(true);
+  }, [notes]);
 
   return { notes, open, dismiss, show, error };
 }

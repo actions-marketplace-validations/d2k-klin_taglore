@@ -1,7 +1,7 @@
 # Upload release notes to S3 (e.g. behind CloudFront) using an OIDC role. No AWS keys stored.
 #
 # Minimal IAM policy for the role:
-#   { "Effect": "Allow", "Action": "s3:PutObject", "Resource": "arn:aws:s3:::my-bucket/myapp/releases/*" }
+#   { "Effect": "Allow", "Action": "s3:PutObject", "Resource": "arn:aws:s3:::my-bucket/myapp/release-notes/*" }
 name: Release notes to S3
 
 on:
@@ -28,4 +28,4 @@ jobs:
       - uses: d2k-klin/taglore@v1
         with:
           copilot-token: ${{ secrets.COPILOT_TOKEN }}
-          s3-uri: s3://my-bucket/myapp/releases/
+          s3-uri: s3://my-bucket/myapp/release-notes/

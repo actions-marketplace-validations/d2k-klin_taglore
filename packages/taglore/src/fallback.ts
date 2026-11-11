@@ -10,7 +10,8 @@ function item(desc: string, scope?: string): NoteItem {
 }
 
 /** Notes without AI, grouped by Conventional Commit type. Used when AI is disabled or fails. */
-export function fallbackNotes(commits: Commit[], version: string): AiNotes {
+/** For a first release (no earlier version) nothing can break, so breaking changes are dropped. */
+export function fallbackNotes(commits: Commit[], version: string, opts: { firstRelease?: boolean } = {}): AiNotes {
   const highlights: NoteItem[] = [];
   const improvements: NoteItem[] = [];
   const fixes: NoteItem[] = [];
@@ -25,7 +26,7 @@ export function fallbackNotes(commits: Commit[], version: string): AiNotes {
     }
     const { type = "", scope, desc = "" } = m.groups;
     const t = type.toLowerCase();
-    if (isBreaking) breaking.push(item(desc, scope));
+    if (isBreaking && !opts.firstRelease) breaking.push(item(desc, scope));
     if (t === "feat") highlights.push(item(desc, scope));
     else if (t === "fix") fixes.push(item(desc, scope));
     else if (t === "perf") improvements.push(item(desc, scope));
@@ -39,8 +40,12 @@ export function fallbackNotes(commits: Commit[], version: string): AiNotes {
   ].filter(Boolean);
 
   return {
-    title: `Release ${version}`,
-    summary: parts.length ? `This release includes ${parts.join(", ")}.` : "Maintenance release.",
+    title: opts.firstRelease ? `First release: ${version}` : `Release ${version}`,
+    summary: opts.firstRelease
+      ? "The first public release."
+      : parts.length
+        ? `This release includes ${parts.join(", ")}.`
+        : "Maintenance release.",
     highlights: highlights.slice(0, 8),
     improvements: improvements.slice(0, 15),
     fixes: fixes.slice(0, 20),

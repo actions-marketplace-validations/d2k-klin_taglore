@@ -192,10 +192,10 @@ export async function runTaglore(opts: TagloreOptions = {}): Promise<TagloreResu
       const msg = e instanceof Error ? e.message : String(e);
       if ((o.onAiFailure ?? "fallback") === "fail") throw new Error(`AI generation failed: ${msg}`);
       log.warn(`AI generation failed, using commit-based notes instead. ${msg}`);
-      body = fallbackNotes(changes.commits, to);
+      body = fallbackNotes(changes.commits, to, { firstRelease: from === null });
     }
   } else {
-    body = fallbackNotes(changes.commits, to);
+    body = fallbackNotes(changes.commits, to, { firstRelease: from === null });
   }
 
   const notes = ReleaseNotesSchema.parse({

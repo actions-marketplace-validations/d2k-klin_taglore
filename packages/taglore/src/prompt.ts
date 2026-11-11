@@ -32,7 +32,7 @@ Summarize the changes from ${o.previousVersion ?? "the first commit"} to ${o.ver
 Write in ${o.language}. Tone: ${o.tone}.
 
 RULES
-- Describe what users can now do or what got better, not how the code changed.
+- Describe what users can now do or what got better, not how the code changed.${o.previousVersion ? "" : "\n- This is the FIRST release: describe what the product offers. Leave \"breaking\" empty; nothing existed before."}
 - Only mention changes that are supported by the commits or diff below. Never invent features.
 - Skip internal-only work (refactors, CI, tests, dependency bumps, formatting) unless it changes user experience, security or performance.
 - "highlights": the most important new features (0-5). "improvements": smaller enhancements. "fixes": user-visible bug fixes. "breaking": anything users or operators must act on.

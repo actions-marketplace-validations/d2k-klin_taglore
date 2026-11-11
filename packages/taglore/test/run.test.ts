@@ -92,5 +92,7 @@ describe("runTaglore end to end", () => {
     const r = await runTaglore({ cwd: repo, to: "v1.0.0", provider: "none", publishGithubRelease: false, dryRun: true, log: silent });
     expect(r.previousVersion).toBeNull();
     expect(r.notes.highlights.map((h) => h.title)).toEqual(["First feature"]);
+    expect(r.notes.breaking).toEqual([]);
+    expect(r.notes.title).toBe("First release: v1.0.0");
   });
 });

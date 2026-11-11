@@ -1,12 +1,12 @@
-# Tagore
+# Taglore
 
-**AI-written release notes from git tags.** Push `v1.9.0`, and Tagore compares it with the right earlier version, has GitHub Copilot write user-friendly notes, and publishes them to:
+**AI-written release notes from git tags.** Push `v1.9.0`, and Taglore compares it with the right earlier version, has GitHub Copilot write user-friendly notes, and publishes them to:
 
 - **GitHub Releases** (Markdown, by default)
 - **a folder** for your Docker build, e.g. `public/releases/latest.json` in a Next.js app
 - **a workflow artifact** for a later job
 - **S3** for apps or CDNs that fetch notes at runtime
-- **your app's What's New dialog** via [`@tagore/whats-new`](packages/whats-new)
+- **your app's What's New dialog** via [`@taglore/whats-new`](packages/whats-new)
 
 No database, no SaaS, no AI calls at runtime. Notes ship with the image they describe.
 
@@ -25,15 +25,15 @@ jobs:
     steps:
       - uses: actions/checkout@v6
         with:
-          fetch-depth: 0 # Tagore needs tags and history
-      - uses: d2k-klin/tagore@v1
+          fetch-depth: 0 # Taglore needs tags and history
+      - uses: d2k-klin/taglore@v1
         with:
           copilot-token: ${{ secrets.COPILOT_TOKEN }}
 ```
 
 ## How versions are compared
 
-Tagore follows SemVer and treats user-facing releases differently from maintenance releases.
+Taglore follows SemVer and treats user-facing releases differently from maintenance releases.
 
 | Tag | Compared with (`compare: auto`) | Notes written by | GitHub Release | In-app announcement |
 |---|---|---|---|---|
@@ -45,11 +45,11 @@ Tagore follows SemVer and treats user-facing releases differently from maintenan
 
 Other modes: `previous-tag`, `previous-minor`, `previous-major`, or `explicit` with your own `from`/`to` (any tags, SHAs or branches). `ai-for` and `announce-on` change which release types get AI notes and announcements.
 
-**Patch releases keep the last announcement.** Every release gets a `tagore.json` asset. On a patch, Tagore downloads the announcement from the last minor's release and writes it as `latest.json`, so the image you build for `v1.9.1` still contains the `v1.9.0` What's New.
+**Patch releases keep the last announcement.** Every release gets a `taglore.json` asset. On a patch, Taglore downloads the announcement from the last minor's release and writes it as `latest.json`, so the image you build for `v1.9.1` still contains the `v1.9.0` What's New.
 
 ## GitHub Copilot setup
 
-Tagore installs the Copilot CLI if it isn't on the runner and calls it **with no tools allowed**, in an empty temp folder. Tagore collects the commits and diff itself; Copilot only reads the prompt and returns JSON.
+Taglore installs the Copilot CLI if it isn't on the runner and calls it **with no tools allowed**, in an empty temp folder. Taglore collects the commits and diff itself; Copilot only reads the prompt and returns JSON.
 
 | Repository | What to do |
 |---|---|
@@ -58,7 +58,7 @@ Tagore installs the Copilot CLI if it isn't on the runner and calls it **with no
 
 Prefer another model source? `ai-provider: github-models` uses the GitHub Models API with the workflow token (`permissions: models: read`). `ai-provider: none` writes notes from Conventional Commits only.
 
-If the AI call fails, Tagore falls back to commit-based notes and keeps your release going (`on-ai-failure: fail` to stop instead).
+If the AI call fails, Taglore falls back to commit-based notes and keeps your release going (`on-ai-failure: fail` to stop instead).
 
 ## Recipes
 
@@ -68,7 +68,7 @@ If the AI call fails, Tagore falls back to commit-based notes and keeps your rel
       - uses: actions/checkout@v6
         with: { fetch-depth: 0 }
       - id: notes
-        uses: d2k-klin/tagore@v1
+        uses: d2k-klin/taglore@v1
         with:
           copilot-token: ${{ secrets.COPILOT_TOKEN }}
           output-dir: public/releases
@@ -80,8 +80,8 @@ The image then serves `GET /releases/latest.json`. Show it with:
 ```tsx
 // app/whats-new.tsx
 "use client";
-import { WhatsNew } from "@tagore/whats-new";
-import "@tagore/whats-new/styles.css";
+import { WhatsNew } from "@taglore/whats-new";
+import "@taglore/whats-new/styles.css";
 
 export default function AppWhatsNew() {
   return <WhatsNew storageKey="myapp:whats-new" />;
@@ -97,7 +97,7 @@ Render `<AppWhatsNew />` once in your root layout. Users see each major/minor an
         with:
           role-to-assume: arn:aws:iam::123456789012:role/release-notes
           aws-region: eu-central-1
-      - uses: d2k-klin/tagore@v1
+      - uses: d2k-klin/taglore@v1
         with:
           s3-uri: s3://my-bucket/myapp/releases/
 ```
@@ -107,7 +107,7 @@ Needs `id-token: write` for OIDC. The role only needs `s3:PutObject` on that pre
 ### Artifact for another job
 
 ```yaml
-      - uses: d2k-klin/tagore@v1
+      - uses: d2k-klin/taglore@v1
         with:
           upload-artifact: release-notes
 # later job:
@@ -124,7 +124,7 @@ on:
       from: { required: true }
       to: { required: true }
 # ...
-      - uses: d2k-klin/tagore@v1
+      - uses: d2k-klin/taglore@v1
         with:
           from: ${{ inputs.from }}
           to: ${{ inputs.to }}
@@ -159,7 +159,7 @@ More in [examples/workflows](examples/workflows).
 | `instructions` | | Extra guidance for the AI |
 | `exclude` | | Extra globs kept out of the AI context |
 | `max-diff-kb` | `100` (`20` for github-models) | Diff size sent to the AI |
-| `publish-github-release` | `true` | Create/update the GitHub Release and attach `tagore.json` |
+| `publish-github-release` | `true` | Create/update the GitHub Release and attach `taglore.json` |
 | `release-draft` | `false` | Create new releases as drafts |
 | `include-commits` | `true` | Collapsible commit list in the Markdown |
 | `output-dir` | | Write `latest.json`, `release.json`, `RELEASE_NOTES.md` here |
@@ -167,7 +167,7 @@ More in [examples/workflows](examples/workflows).
 | `s3-uri` | | `s3://bucket/prefix/` |
 | `s3-region` | AWS env | Region for S3 |
 | `announce-on` | `major,minor` | Release types that create a new announcement |
-| `baseline-file` | | Local `tagore.json` to reuse instead of downloading it |
+| `baseline-file` | | Local `taglore.json` to reuse instead of downloading it |
 | `dry-run` | `false` | Generate and print only |
 | `github-token` | `github.token` | Token for Releases / GitHub Models |
 | `working-directory` | workspace | Repository folder |
@@ -179,10 +179,10 @@ More in [examples/workflows](examples/workflows).
 Same engine, for local previews or other CI systems:
 
 ```bash
-npx tagore generate --to v1.9.0 --dry-run                 # preview
-npx tagore generate --from v1.7.0 --to v1.9.0 --out ./public/releases
-npx tagore generate --github --repo owner/app              # publish (needs GITHUB_TOKEN)
-npx tagore --help
+npx taglore generate --to v1.9.0 --dry-run                 # preview
+npx taglore generate --from v1.7.0 --to v1.9.0 --out ./public/releases
+npx taglore generate --github --repo owner/app              # publish (needs GITHUB_TOKEN)
+npx taglore --help
 ```
 
 ## Files and format
@@ -190,33 +190,33 @@ npx tagore --help
 | File | Content |
 |---|---|
 | `latest.json` | The announcement apps should show: this release if it announces, otherwise the last one that did |
-| `release.json` | Structured notes for this exact release (also attached to the GitHub Release as `tagore.json`) |
+| `release.json` | Structured notes for this exact release (also attached to the GitHub Release as `taglore.json`) |
 | `RELEASE_NOTES.md` | Markdown, same as the GitHub Release body |
 
 JSON follows [`schema/release.schema.json`](schema/release.schema.json): `version`, `previousVersion`, `releaseType`, `announce`, `date`, `title`, `summary`, `highlights[]`, `improvements[]`, `fixes[]`, `breaking[]`, `generator`.
 
 ## Security
 
-- AI output is untrusted: Tagore validates it against the schema, enforces length limits and strips HTML, links, URLs and control characters before anything is published. `@tagore/whats-new` renders plain text only.
+- AI output is untrusted: Taglore validates it against the schema, enforces length limits and strips HTML, links, URLs and control characters before anything is published. `@taglore/whats-new` renders plain text only.
 - The prompt tells the model to treat commits and code as data; Copilot runs without tools in an empty folder, so injected instructions can't run commands or read files.
 - Lockfiles, build output, binaries, images, `.env*`, `*.pem` and `*.key` never reach the AI. Add more with `exclude`.
-- Don't run Tagore on `pull_request_target` or fork-triggered workflows with secrets.
-- S3 uses the job's AWS credentials (OIDC). Tagore never takes AWS keys as inputs.
+- Don't run Taglore on `pull_request_target` or fork-triggered workflows with secrets.
+- S3 uses the job's AWS credentials (OIDC). Taglore never takes AWS keys as inputs.
 
 ## Use it with an AI coding agent
 
-[`skills/tagore/SKILL.md`](skills/tagore/SKILL.md) teaches Claude Code, GitHub Copilot and other agents how to add Tagore to a project. Copy the folder into `.claude/skills/tagore/` or `.github/skills/tagore/` of your app repo, then ask: *"Set up Tagore release notes for this app."*
+[`skills/taglore/SKILL.md`](skills/taglore/SKILL.md) teaches Claude Code, GitHub Copilot and other agents how to add Taglore to a project. Copy the folder into `.claude/skills/taglore/` or `.github/skills/taglore/` of your app repo, then ask: *"Set up Taglore release notes for this app."*
 
 ## Repository layout
 
 ```text
 action.yml               GitHub Action (runs dist/index.js)
 dist/                    Bundled action, committed
-packages/tagore/         Core + CLI (npm: tagore)
-packages/whats-new/      React component (npm: @tagore/whats-new)
+packages/taglore/         Core + CLI (npm: taglore)
+packages/whats-new/      React component (npm: @taglore/whats-new)
 schema/                  JSON schema
 examples/                Workflows and Next.js integration
-skills/tagore/           Agent skill
+skills/taglore/           Agent skill
 ```
 
 ## Contributing

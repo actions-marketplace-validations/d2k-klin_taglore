@@ -1,6 +1,6 @@
 # Security policy
 
-Please report vulnerabilities privately through [GitHub Security Advisories](https://github.com/d2k-klin/tagore/security/advisories/new), not in public issues.
+Please report vulnerabilities privately through [GitHub Security Advisories](https://github.com/d2k-klin/taglore/security/advisories/new), not in public issues.
 
 Include the affected version, a description and steps to reproduce. You'll get a reply within a few days.
 

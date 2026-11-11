@@ -43,7 +43,7 @@ function write(key: string, value: string) {
 }
 
 export function useWhatsNew(options: UseWhatsNewOptions = {}): WhatsNewState {
-  const { url = "/releases/latest.json", data, storageKey = "tagore:whats-new:last-seen", showOnFirstVisit = false, enabled = true } = options;
+  const { url = "/releases/latest.json", data, storageKey = "taglore:whats-new:last-seen", showOnFirstVisit = false, enabled = true } = options;
   const [notes, setNotes] = useState<ReleaseNotes | null>(data ?? null);
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<Error | null>(null);
@@ -73,7 +73,7 @@ export function useWhatsNew(options: UseWhatsNewOptions = {}): WhatsNewState {
       .then((r) => (r.ok ? r.json() : r.status === 404 ? null : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then((json: unknown) => {
         if (cancelled || json === null) return;
-        if (!isReleaseNotes(json)) throw new Error("latest.json does not match the Tagore schema");
+        if (!isReleaseNotes(json)) throw new Error("latest.json does not match the Taglore schema");
         setNotes(json);
         decide(json);
       })

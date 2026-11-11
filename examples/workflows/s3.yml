@@ -25,7 +25,7 @@ jobs:
           role-to-assume: arn:aws:iam::123456789012:role/release-notes
           aws-region: eu-central-1
 
-      - uses: d2k-klin/tagore@v1
+      - uses: d2k-klin/taglore@v1
         with:
           copilot-token: ${{ secrets.COPILOT_TOKEN }}
           s3-uri: s3://my-bucket/myapp/releases/

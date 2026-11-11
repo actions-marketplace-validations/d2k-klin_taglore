@@ -1,4 +1,4 @@
-# Standard Next.js standalone image. Tagore writes public/releases/* before this build runs.
+# Standard Next.js standalone image. Taglore writes public/releases/* before this build runs.
 FROM node:24-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./

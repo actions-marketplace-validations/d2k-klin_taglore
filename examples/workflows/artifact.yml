@@ -18,7 +18,7 @@ jobs:
         with:
           fetch-depth: 0
       - id: notes
-        uses: d2k-klin/tagore@v1
+        uses: d2k-klin/taglore@v1
         with:
           copilot-token: ${{ secrets.COPILOT_TOKEN }}
           upload-artifact: release-notes

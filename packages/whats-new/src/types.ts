@@ -17,7 +17,7 @@ export interface ReleaseNotes {
   improvements: NoteItem[];
   fixes: NoteItem[];
   breaking: NoteItem[];
-  generator: { name: "tagore"; version: string; provider: string; model: string | null };
+  generator: { name: "taglore"; version: string; provider: string; model: string | null };
 }
 
 export function isReleaseNotes(v: unknown): v is ReleaseNotes {

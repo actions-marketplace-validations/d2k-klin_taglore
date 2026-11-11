@@ -146,7 +146,7 @@
       "properties": {
         "name": {
           "type": "string",
-          "const": "tagore"
+          "const": "taglore"
         },
         "version": {
           "type": "string"
@@ -186,6 +186,6 @@
     "generator"
   ],
   "additionalProperties": false,
-  "$id": "https://raw.githubusercontent.com/d2k-klin/tagore/main/schema/release.schema.json",
-  "title": "Tagore release notes"
+  "$id": "https://raw.githubusercontent.com/d2k-klin/taglore/main/schema/release.schema.json",
+  "title": "Taglore release notes"
 }

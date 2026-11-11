@@ -17,7 +17,7 @@ export interface ReleaseNotes {
     fixes: NoteItem[];
     breaking: NoteItem[];
     generator: {
-        name: "tagore";
+        name: "taglore";
         version: string;
         provider: string;
         model: string | null;

@@ -1,4 +1,4 @@
-# Tagore releases itself: notes written by Tagore, then the vX major tag is moved.
+# Taglore releases itself: notes written by Taglore, then the vX major tag is moved.
 name: Release
 
 on:
@@ -18,10 +18,10 @@ jobs:
 
       - uses: ./
         with:
-          # Optional secret. Without it, Copilot calls fail and Tagore falls back to commit-based notes.
+          # Optional secret. Without it, Copilot calls fail and Taglore falls back to commit-based notes.
           copilot-token: ${{ secrets.COPILOT_TOKEN }}
-          product-name: Tagore
-          audience: developers who use the Tagore GitHub Action and CLI
+          product-name: Taglore
+          audience: developers who use the Taglore GitHub Action and CLI
 
       - name: Move major tag
         if: ${{ !contains(github.ref_name, '-') }}

@@ -35,13 +35,13 @@ export interface WhatsNewProps extends UseWhatsNewOptions {
 function Section({ title, items, kind }: { title: string; items: NoteItem[]; kind: string }) {
   if (!items.length) return null;
   return (
-    <section className={`tagore-wn__section tagore-wn__section--${kind}`}>
-      <h3 className="tagore-wn__section-title">{title}</h3>
-      <ul className="tagore-wn__list">
+    <section className={`taglore-wn__section taglore-wn__section--${kind}`}>
+      <h3 className="taglore-wn__section-title">{title}</h3>
+      <ul className="taglore-wn__list">
         {items.map((i, idx) => (
-          <li key={idx} className="tagore-wn__item">
-            <strong className="tagore-wn__item-title">{i.title}</strong>
-            {i.description ? <span className="tagore-wn__item-desc"> {i.description}</span> : null}
+          <li key={idx} className="taglore-wn__item">
+            <strong className="taglore-wn__item-title">{i.title}</strong>
+            {i.description ? <span className="taglore-wn__item-desc"> {i.description}</span> : null}
           </li>
         ))}
       </ul>
@@ -77,30 +77,30 @@ export function WhatsNew({ labels, className, compact, children, onDismiss, ...o
   return (
     <dialog
       ref={ref}
-      className={["tagore-wn", className].filter(Boolean).join(" ")}
-      aria-labelledby="tagore-wn-title"
+      className={["taglore-wn", className].filter(Boolean).join(" ")}
+      aria-labelledby="taglore-wn-title"
       onCancel={(e) => {
         e.preventDefault();
         close();
       }}
     >
-      <header className="tagore-wn__header">
-        <p className="tagore-wn__eyebrow">
+      <header className="taglore-wn__header">
+        <p className="taglore-wn__eyebrow">
           {l.heading} · {n.version}
         </p>
-        <h2 id="tagore-wn-title" className="tagore-wn__title">
+        <h2 id="taglore-wn-title" className="taglore-wn__title">
           {n.title}
         </h2>
-        <p className="tagore-wn__summary">{n.summary}</p>
+        <p className="taglore-wn__summary">{n.summary}</p>
       </header>
-      <div className="tagore-wn__body">
+      <div className="taglore-wn__body">
         <Section title={l.breaking} items={n.breaking} kind="breaking" />
         <Section title={l.highlights} items={n.highlights} kind="highlights" />
         {!compact && <Section title={l.improvements} items={n.improvements} kind="improvements" />}
         {!compact && <Section title={l.fixes} items={n.fixes} kind="fixes" />}
       </div>
-      <footer className="tagore-wn__footer">
-        <button type="button" className="tagore-wn__close" onClick={close} autoFocus>
+      <footer className="taglore-wn__footer">
+        <button type="button" className="taglore-wn__close" onClick={close} autoFocus>
           {l.close}
         </button>
       </footer>

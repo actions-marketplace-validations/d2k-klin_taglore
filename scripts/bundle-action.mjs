@@ -2,7 +2,7 @@
 import { build } from "esbuild";
 
 await build({
-  entryPoints: ["packages/tagore/src/action.ts"],
+  entryPoints: ["packages/taglore/src/action.ts"],
   outfile: "dist/index.js",
   bundle: true,
   platform: "node",
@@ -13,6 +13,6 @@ await build({
   logLevel: "info",
   // Some CommonJS dependencies call require(); give the ESM bundle one.
   banner: {
-    js: "import { createRequire as __tagoreCreateRequire } from 'node:module'; const require = __tagoreCreateRequire(import.meta.url);",
+    js: "import { createRequire as __tagloreCreateRequire } from 'node:module'; const require = __tagloreCreateRequire(import.meta.url);",
   },
 });

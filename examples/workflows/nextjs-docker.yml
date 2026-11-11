@@ -1,5 +1,5 @@
 # Next.js: release notes into the Docker image, served at /releases/latest.json.
-# Add the Tagore step to your EXISTING tag workflow, before docker build.
+# Add the Taglore step to your EXISTING tag workflow, before docker build.
 name: Release
 
 on:
@@ -19,7 +19,7 @@ jobs:
           fetch-depth: 0
 
       - id: notes
-        uses: d2k-klin/tagore@v1
+        uses: d2k-klin/taglore@v1
         with:
           copilot-token: ${{ secrets.COPILOT_TOKEN }}
           output-dir: public/releases   # latest.json, release.json, RELEASE_NOTES.md

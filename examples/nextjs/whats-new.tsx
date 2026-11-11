@@ -1,7 +1,7 @@
 "use client";
 
-import { WhatsNew } from "@tagore/whats-new";
-import "@tagore/whats-new/styles.css";
+import { WhatsNew } from "@taglore/whats-new";
+import "@taglore/whats-new/styles.css";
 
 /** Shows each major/minor announcement once. Rendered from app/layout.tsx. */
 export default function AppWhatsNew() {
@@ -17,7 +17,7 @@ export default function AppWhatsNew() {
 /*
 Headless variant with your own dialog (e.g. shadcn/ui):
 
-import { WhatsNew } from "@tagore/whats-new";
+import { WhatsNew } from "@taglore/whats-new";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 export function AppWhatsNew() {

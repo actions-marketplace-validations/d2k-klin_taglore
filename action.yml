@@ -1,4 +1,4 @@
-name: Tagore Release Notes
+name: Taglore Release Notes
 description: AI-written release notes from git tags, for GitHub Releases, Docker builds, artifacts, S3 and in-app What's New.
 author: d2k-klin
 branding:
@@ -38,7 +38,7 @@ inputs:
     required: false
     default: latest
   copilot-args:
-    description: Extra Copilot CLI arguments, comma or newline separated. Tagore allows no tools by default.
+    description: Extra Copilot CLI arguments, comma or newline separated. Taglore allows no tools by default.
     required: false
   ai-for:
     description: Release types that get AI-written notes. Others get notes from commit messages.
@@ -75,7 +75,7 @@ inputs:
 
   # Outputs
   publish-github-release:
-    description: Create or update the GitHub Release for the tag and attach tagore.json.
+    description: Create or update the GitHub Release for the tag and attach taglore.json.
     required: false
     default: "true"
   release-draft:
@@ -90,7 +90,7 @@ inputs:
     description: Write latest.json, release.json and RELEASE_NOTES.md to this folder, e.g. public/releases for a Next.js Docker build.
     required: false
   upload-artifact:
-    description: Upload the files as a workflow artifact. "true" uses the name tagore-release-notes, any other value is the artifact name.
+    description: Upload the files as a workflow artifact. "true" uses the name taglore-release-notes, any other value is the artifact name.
     required: false
     default: "false"
   s3-uri:
@@ -104,7 +104,7 @@ inputs:
     required: false
     default: major,minor
   baseline-file:
-    description: Path to an existing tagore.json to use as latest.json for releases that don't announce. Default is to download it from the earlier GitHub Release.
+    description: Path to an existing taglore.json to use as latest.json for releases that don't announce. Default is to download it from the earlier GitHub Release.
     required: false
   dry-run:
     description: Generate and print, publish nothing.

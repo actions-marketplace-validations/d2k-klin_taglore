@@ -1,22 +1,22 @@
 {
-  "name": "tagore-monorepo",
+  "name": "taglore-monorepo",
   "private": true,
   "type": "module",
-  "description": "Tagore: AI-written release notes from git tags, published to GitHub Releases, Docker builds, S3 and an in-app What's New dialog.",
+  "description": "Taglore: AI-written release notes from git tags, published to GitHub Releases, Docker builds, S3 and an in-app What's New dialog.",
   "license": "MIT",
   "workspaces": [
-    "packages/tagore",
+    "packages/taglore",
     "packages/whats-new"
   ],
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "build": "npm run build -w tagore && npm run build -w @tagore/whats-new && npm run bundle && npm run schema",
+    "build": "npm run build -w taglore && npm run build -w @taglore/whats-new && npm run bundle && npm run schema",
     "bundle": "node scripts/bundle-action.mjs",
     "schema": "node scripts/generate-schema.mjs",
-    "typecheck": "npm run typecheck -w tagore && npm run typecheck -w @tagore/whats-new",
-    "test": "npm test -w tagore && npm test -w @tagore/whats-new",
+    "typecheck": "npm run typecheck -w taglore && npm run typecheck -w @taglore/whats-new",
+    "test": "npm test -w taglore && npm test -w @taglore/whats-new",
     "check-dist": "npm run bundle && npm run schema && git diff --exit-code -- dist schema"
   },
   "devDependencies": {

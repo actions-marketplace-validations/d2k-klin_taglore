@@ -28,4 +28,4 @@ node packages/taglore/dist/cli.js generate --to v1.2.0 --provider none --dry-run
 ## Releasing (maintainers)
 
 1. Bump the version in `packages/taglore/package.json`, `packages/taglore/src/meta.ts` and `packages/whats-new/package.json`, run `npm run build`, merge.
-2. Tag `main` with `vX.Y.Z` and push. The release workflow writes the notes with Taglore itself and moves the `vX` major tag.
+2. Merging the version bump to `main` creates the `vX.Y.Z` tag, writes the notes with Taglore itself and moves the `vX` major tag. Pushing a `vX.Y.Z` tag yourself does the same.

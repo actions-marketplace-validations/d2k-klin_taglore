@@ -253,7 +253,7 @@ export async function runTaglore(opts: TagloreOptions = {}): Promise<TagloreResu
         draft: o.releaseDraft ?? false,
         makeLatest: releaseType !== "prerelease",
       });
-      await releases.uploadAsset(rel.id, RELEASE_ASSET_NAME, JSON.stringify(notes, null, 2) + "\n");
+      await releases.uploadAsset(rel, RELEASE_ASSET_NAME, JSON.stringify(notes, null, 2) + "\n");
       releaseUrl = rel.html_url;
       log.info(`GitHub Release: ${releaseUrl}`);
     }

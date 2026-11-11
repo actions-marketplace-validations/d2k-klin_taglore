@@ -32,6 +32,8 @@ jobs:
 
       - id: version
         name: Determine release tag
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           if [[ "$GITHUB_REF" == refs/tags/* ]]; then
             echo "tag=$GITHUB_REF_NAME" >> "$GITHUB_OUTPUT"
@@ -41,8 +43,13 @@ jobs:
           TAG="v$(node -p "require('./packages/taglore/package.json').version")"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
-            echo "$TAG already exists, nothing to release."
-            echo "create=skip" >> "$GITHUB_OUTPUT"
+            if gh release view "$TAG" --json assets -q '.assets[].name' 2>/dev/null | grep -qx taglore.json; then
+              echo "$TAG is already released, nothing to do."
+              echo "create=skip" >> "$GITHUB_OUTPUT"
+            else
+              echo "$TAG exists but its release is incomplete; regenerating the notes."
+              echo "create=false" >> "$GITHUB_OUTPUT"
+            fi
           else
             echo "create=true" >> "$GITHUB_OUTPUT"
           fi

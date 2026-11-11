@@ -55,18 +55,18 @@ export class GitHubReleases {
     return data;
   }
 
-  async uploadAsset(releaseId: number, name: string, content: string) {
-    const { data: assets } = await this.octokit.rest.repos.listReleaseAssets({ ...this.ref, release_id: releaseId, per_page: 100 });
+  /** Uploads (or replaces) a release asset. Uses the release's own upload_url, so GitHub Enterprise Server works too. */
+  async uploadAsset(release: { id: number; upload_url: string }, name: string, content: string) {
+    const { data: assets } = await this.octokit.rest.repos.listReleaseAssets({ ...this.ref, release_id: release.id, per_page: 100 });
     for (const a of assets.filter((a) => a.name === name)) {
       await this.octokit.rest.repos.deleteReleaseAsset({ ...this.ref, asset_id: a.id });
     }
-    await this.octokit.rest.repos.uploadReleaseAsset({
-      ...this.ref,
-      release_id: releaseId,
+    await this.octokit.request({
+      method: "POST",
+      url: release.upload_url,
       name,
-      // Octokit types expect string; the request is sent as raw bytes.
       data: content,
-      headers: { "content-type": "application/json", "content-length": Buffer.byteLength(content) },
+      headers: { "content-type": "application/json" },
     });
   }
 

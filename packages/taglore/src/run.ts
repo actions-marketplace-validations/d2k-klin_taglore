@@ -11,6 +11,10 @@ import { type OutFile, writeOutputDir } from "./publish/files.js";
 import { GitHubReleases, parseRepo, RELEASE_ASSET_NAME } from "./publish/github-release.js";
 import { uploadToS3 } from "./publish/s3.js";
 import { sanitizeNotes } from "./sanitize.js";
+import { assertFailOn, describeCounts, gateViolations } from "./security/diff.js";
+import { renderSecuritySection } from "./security/markdown.js";
+import { runSecurityScan } from "./security/scan.js";
+import type { FailOn, SecurityReport } from "./security/types.js";
 import { AiNotesSchema, type AiNotes, type ReleaseNotes, ReleaseNotesSchema, type ReleaseType, SCHEMA_VERSION } from "./schema.js";
 import { announcementBase, type CompareMode, compareSemver, parseSemver, releaseTypeOf, resolveBase, shouldAnnounce } from "./version.js";
 
@@ -62,6 +66,24 @@ export interface TagloreOptions {
   s3Region?: string;
   dryRun?: boolean;
   log?: Logger;
+
+  /** Scan both versions with Syft + Grype and add a Security section, security.json and sbom.cdx.json. */
+  security?: boolean;
+  /** Fail (before publishing anything) when the release introduces vulnerabilities at or above this severity. */
+  securityFailOn?: FailOn;
+  /** Max vulnerability rows in the Markdown table (the rest stay in security.json). */
+  securityMaxItems?: number;
+  /** Extra Syft exclude patterns, e.g. "./test/**". */
+  securityExcludes?: string[];
+  syftCommand?: string;
+  /** Also scan this container image, e.g. "ghcr.io/acme/app:{version}" ({semver} = tag without "v"). Implies security. */
+  securityImage?: string;
+  /**
+   * Reuse notes written by an earlier Taglore step (its release.json) instead of generating them again.
+   * Typical use: notes before docker build (baked into the image), security with the image scan after it.
+   */
+  notesFrom?: string;
+  grypeCommand?: string;
 }
 
 export interface TagloreResult {
@@ -79,6 +101,8 @@ export interface TagloreResult {
   s3Keys: string[];
   releaseUrl: string | null;
   compareUrl: string | null;
+  /** Full security report when security scanning was enabled. */
+  security: SecurityReport | null;
 }
 
 const consoleLog: Logger = { info: (m) => console.log(m), warn: (m) => console.warn(`warning: ${m}`) };
@@ -178,11 +202,46 @@ export async function runTaglore(opts: TagloreOptions = {}): Promise<TagloreResu
   });
   log.info(`${changes.commits.length} commits, ${changes.files.length} files changed${changes.diffTruncated ? " (diff truncated)" : ""}`);
 
+  // 2b. Security scan (deterministic, never AI). Runs before the AI call so a failing gate costs nothing.
+  let security: SecurityReport | null = null;
+  let sbom: string | null = null;
+  let imageSbom: string | null = null;
+  if (o.security || o.securityImage) {
+    assertFailOn(o.securityFailOn ?? "none");
+    const scan = await runSecurityScan({
+      cwd,
+      from,
+      to,
+      syft: o.syftCommand,
+      grype: o.grypeCommand,
+      excludes: o.securityExcludes,
+      image: o.securityImage,
+      log,
+    });
+    imageSbom = scan.imageSbom;
+    security = scan.report;
+    sbom = scan.sbom;
+    log.info(`Security: open ${describeCounts(security.summary.open)}; introduced ${describeCounts(security.summary.introduced)}; fixed ${describeCounts(security.summary.fixed)}`);
+    const violations = gateViolations(security, o.securityFailOn ?? "none");
+    if (violations.length) {
+      const list = violations.slice(0, 10).map((v) => `${v.id} (${v.severity}) in ${v.package} ${v.version}`).join("; ");
+      throw new Error(
+        `Security gate: ${violations.length} vulnerabilit${violations.length === 1 ? "y" : "ies"} at or above "${o.securityFailOn}" ${from ? `introduced since ${from}` : "in this first release"}: ${list}. Nothing was published.`,
+      );
+    }
+  }
+
   // 3. Notes (AI or fallback)
   let body: AiNotes;
   let providerName = "fallback";
   let model: string | null = null;
-  if (provider && aiFor.includes(releaseType) && changes.commits.length > 0) {
+  const reused = o.notesFrom ? await loadNotesFrom(o.notesFrom, to, cwd) : null;
+  if (reused) {
+    log.info(`Reusing the notes from ${o.notesFrom} (written by ${reused.generator.provider}).`);
+    body = AiNotesSchema.parse(reused);
+    providerName = reused.generator.provider;
+    model = reused.generator.model;
+  } else if (provider && aiFor.includes(releaseType) && changes.commits.length > 0) {
     try {
       const r = await aiNotes(provider, changes, o, to, from, log);
       body = r.notes;
@@ -207,6 +266,7 @@ export async function runTaglore(opts: TagloreOptions = {}): Promise<TagloreResu
     announce,
     date: await refDate(to, cwd),
     generator: { name: "taglore", version: TAGLORE_VERSION, provider: providerName, model },
+    ...(security ? { security: security.summary } : {}),
   });
 
   // 4. Announcement for apps (latest.json)
@@ -222,11 +282,25 @@ export async function runTaglore(opts: TagloreOptions = {}): Promise<TagloreResu
 
   // 5. Render
   const compareUrl = repository && from ? `${serverUrl}/${repository}/compare/${from}...${to}` : null;
-  const markdown = renderMarkdown(notes, { commits: changes.commits, compareUrl, includeCommits: o.includeCommits });
+  const markdown = renderMarkdown(notes, {
+    commits: changes.commits,
+    compareUrl,
+    includeCommits: o.includeCommits,
+    securitySection: security ? renderSecuritySection(security, o.securityMaxItems) : undefined,
+  });
   const files: OutFile[] = [
-    { name: "release.json", content: JSON.stringify(notes, null, 2) + "\n", contentType: "application/json", cacheControl: "public, max-age=31536000, immutable" },
+    { name: "release.json", content: JSON.stringify(notes, null, 2) + "\n", contentType: "application/json", cacheControl: "public, max-age=300" },
     { name: "RELEASE_NOTES.md", content: markdown, contentType: "text/markdown; charset=utf-8", cacheControl: "public, max-age=300" },
   ];
+  if (security && sbom) {
+    if (imageSbom) {
+      files.push({ name: "sbom-image.cdx.json", content: imageSbom, contentType: "application/vnd.cyclonedx+json", cacheControl: "public, max-age=300" });
+    }
+    files.push(
+      { name: "security.json", content: JSON.stringify(security, null, 2) + "\n", contentType: "application/json", cacheControl: "public, max-age=300" },
+      { name: "sbom.cdx.json", content: sbom, contentType: "application/vnd.cyclonedx+json", cacheControl: "public, max-age=300" },
+    );
+  }
   if (latest) {
     files.push({ name: "latest.json", content: JSON.stringify(latest, null, 2) + "\n", contentType: "application/json", cacheControl: "public, max-age=60" });
   }
@@ -254,6 +328,9 @@ export async function runTaglore(opts: TagloreOptions = {}): Promise<TagloreResu
         makeLatest: releaseType !== "prerelease",
       });
       await releases.uploadAsset(rel, RELEASE_ASSET_NAME, JSON.stringify(notes, null, 2) + "\n");
+      for (const f of files.filter((f) => ["security.json", "sbom.cdx.json", "sbom-image.cdx.json"].includes(f.name))) {
+        await releases.uploadAsset(rel, f.name, f.content, f.contentType);
+      }
       releaseUrl = rel.html_url;
       log.info(`GitHub Release: ${releaseUrl}`);
     }
@@ -277,6 +354,7 @@ export async function runTaglore(opts: TagloreOptions = {}): Promise<TagloreResu
     s3Keys,
     releaseUrl,
     compareUrl,
+    security,
   };
 }
 
@@ -325,4 +403,22 @@ function announcementCandidates(current: NonNullable<ReturnType<typeof parseSemv
     .reverse();
   // Prefer the release this patch belongs to (v1.9.0 for v1.9.3), then older ones.
   return base && base.raw !== current.raw ? [base, ...all.filter((v) => v.raw !== base.raw)] : all;
+}
+
+/** Loads an earlier step's release.json and checks it belongs to this release. */
+async function loadNotesFrom(path: string, version: string, cwd: string): Promise<ReleaseNotes> {
+  const { readFile } = await import("node:fs/promises");
+  const { resolve } = await import("node:path");
+  let raw: string;
+  try {
+    raw = await readFile(resolve(cwd, path), "utf8");
+  } catch {
+    throw new Error(`notes-from: cannot read ${path}. Point it at the release.json written by the earlier Taglore step (output-dir).`);
+  }
+  const parsed = ReleaseNotesSchema.safeParse(JSON.parse(raw));
+  if (!parsed.success) throw new Error(`notes-from: ${path} is not a Taglore release.json.`);
+  if (parsed.data.version !== version) {
+    throw new Error(`notes-from: ${path} is for ${parsed.data.version}, but this release is ${version}.`);
+  }
+  return parsed.data;
 }

@@ -54,8 +54,11 @@ async function ensureAnchoreTool(name: "syft" | "grype", version: string): Promi
 async function main() {
   const githubToken = input("github-token") ?? process.env.GITHUB_TOKEN;
   const copilotToken = input("copilot-token");
-  if (githubToken) core.setSecret(githubToken);
-  if (copilotToken) core.setSecret(copilotToken);
+  // Outside GitHub Actions, setSecret just prints "::add-mask::<token>" in plain text.
+  if (process.env.GITHUB_ACTIONS === "true") {
+    if (githubToken) core.setSecret(githubToken);
+    if (copilotToken) core.setSecret(copilotToken);
+  }
 
   const from = input("from");
   const provider = (input("ai-provider") ?? "copilot") as ProviderName;
@@ -76,6 +79,8 @@ async function main() {
     grypeCommand,
     securityImage,
     notesFrom: input("notes-from"),
+    paths: list<string>("paths"),
+    releaseBody: input("release-body") as "replace" | "prepend" | "append" | undefined,
     evidence: input("evidence") as "warn" | "strict" | undefined,
     previewFile: input("preview-file"),
     historyLimit: input("history-limit") ? Number(input("history-limit")) : undefined,

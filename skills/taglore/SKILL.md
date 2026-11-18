@@ -128,6 +128,7 @@ Behaviour to explain to the user: each major/minor announcement shows once per b
 ## Version rules (for answering questions)
 
 - `compare: auto`: patch compares with the previous tag; minor and major compare with the previous `X.Y.0`, which covers all patches in between. First release compares from the root commit. Prereleases are never used as a base.
+- `backfill` (default `0`): onboarding. Writes notes for up to N earlier tags (oldest first, max 50) into their GitHub Releases and `history.json`. Existing release text is kept (Taglore's notes prepended), older releases never become "Latest" or pop up, tags with notes are skipped (safe to leave on). Suggest `backfill: 20` when a project adopts Taglore with existing tags, run once via workflow_dispatch on the latest tag. Each written tag is one AI request.
 - `patch-notes` (default `ai`): `ai` = AI notes for patches, the app keeps the last major/minor announcement; `announce` = AI notes and a What's New of their own; `commits` = commit messages (pre-1.4.0 behaviour). Adds to `ai-for`/`announce-on`, never removes.
 - `ai-for` (default `major,minor`): which release types get AI notes; others use commit messages. Patches follow `patch-notes`.
 - `announce-on` (default `major,minor`): which release types write a new `latest.json`. Other releases copy the last announced `taglore.json` from GitHub Releases (or from `baseline-file`).
@@ -166,5 +167,6 @@ Taglore is not on the npm registry. Use the Action for CI. The web components co
 | "notes-from: … is for vX, but this release is vY" | The first step wrote notes for a different tag; both steps must use the same `to` |
 | Security gate failed | The error lists the findings; upgrade the dependency, or record an accepted risk in `.grype.yaml` |
 | GitHub Models 413 or token limit | Lower `max-diff-kb` (default 20 for github-models); it caps commits, file list and diff together |
+| Notes on a big release miss changes ("remaining diff truncated" in the log) | Raise `max-diff-kb` (default 300 for Copilot, about 75-90k tokens; up to ~400 fits any 128k-token model, more with a 1M-context `model`, max 4096) |
 | Statements removed or flagged as unverified | The model cited no real commit for them; check the run summary, improve commit messages, or use `evidence: warn` |
 | Notes mention internal work | Add guidance in `instructions`, or `exclude` the paths |

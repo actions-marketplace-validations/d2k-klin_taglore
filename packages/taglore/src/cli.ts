@@ -23,13 +23,14 @@ AI
   --model <id>            Model id passed to the provider
   --ai-for <types>        Release types that get AI notes (default: major,minor)
   --patch-notes <m>       commits | ai | announce: how patch releases are written (default: ai)
+  --backfill <n>          Onboarding: also write notes for up to n earlier tags (max 50)
   --on-ai-failure <m>     fallback | fail (default: fallback)
   --language <lang>       Default: English
   --tone <text>           Default: "friendly and concise"
   --audience <text>       Default: "end users of the application"
   --instructions <text>   Extra guidance for the AI
   --exclude <glob>        Extra path to keep out of the AI context (repeatable)
-  --max-diff-kb <n>       Diff size sent to the AI (default: 100, github-models: 20)
+  --max-diff-kb <n>       Change context sent to the AI in KB (default: 300, github-models: 20, max 4096)
 
 Security (needs syft and grype on PATH)
   --security              Add a Security section, security.json and sbom.cdx.json
@@ -76,6 +77,7 @@ async function main() {
       model: { type: "string" },
       "ai-for": { type: "string" },
       "patch-notes": { type: "string" },
+      backfill: { type: "string" },
       "on-ai-failure": { type: "string" },
       language: { type: "string" },
       tone: { type: "string" },
@@ -123,6 +125,7 @@ async function main() {
     model: values.model,
     aiFor: list<ReleaseType>(values["ai-for"]),
     patchNotes: values["patch-notes"] as PatchNotesMode | undefined,
+    backfill: values.backfill !== undefined ? Number(values.backfill) : undefined,
     onAiFailure: values["on-ai-failure"] as "fallback" | "fail" | undefined,
     language: values.language,
     tone: values.tone,

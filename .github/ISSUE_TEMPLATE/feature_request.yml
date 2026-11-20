@@ -1,0 +1,21 @@
+name: Feature request
+description: An idea for Taglore.
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What are you trying to do, and what gets in the way today?
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: What would help
+      description: The input, option or behaviour you have in mind. Workarounds you use today are useful too.
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: Your setup, for example Release Please, a monorepo, immutable releases, the stack that shows the notes.

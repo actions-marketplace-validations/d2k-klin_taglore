@@ -1,0 +1,56 @@
+name: Bug report
+description: Something doesn't work as documented.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. Security problems go to a [private advisory](https://github.com/d2k-klin/taglore/security/advisories/new), not here.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you expected, and what Taglore did instead.
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Workflow step or CLI command
+      description: The Taglore step (inputs) or the CLI command you ran. Remove tokens and secrets.
+      render: yaml
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log output
+      description: The Taglore part of the job log. Remove anything private.
+      render: text
+  - type: input
+    id: version
+    attributes:
+      label: Taglore version
+      description: The tag or SHA you use (for example v1 or v1.7.0), or `taglore --version`.
+    validations:
+      required: true
+  - type: dropdown
+    id: how
+    attributes:
+      label: How you run it
+      options:
+        - GitHub Action
+        - CLI (taglore.tgz / npx)
+        - Self-contained CLI (taglore.mjs)
+        - What's New components (web component or React)
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: AI provider
+      options:
+        - Copilot CLI
+        - GitHub Models
+        - none (commit-based notes)
+        - not relevant

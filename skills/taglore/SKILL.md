@@ -163,9 +163,9 @@ Taglore is not on the npm registry. Use the Action for CI. The web components co
 
 | Symptom | Fix |
 |---|---|
-| "Cannot upload assets to an immutable release" (Taglore before 1.6) | Upgrade; 1.6 creates a draft, attaches, then publishes. For releases already published, add `history-branch` |
+| "immutable release: files can't be attached" warning | The release was already published (e.g. by Release Please) before Taglore ran. Its notes are updated; keep the history in `history-branch` |
 | "remaining diff truncated" / `context-truncated: true` | Raise `max-diff-kb`, or set `focus-paths` to the user-facing folders |
-| A title or field "too long" stopped a run | 1.6 retries with the reason or shortens it; set `on-ai-failure: fail` only if you want to stop instead |
+| "The AI answer was rejected" in the log | Normal: one corrective retry with the reasons (length-only problems are shortened without one). If the retry also fails, the commit-based fallback is used, or the run stops with `on-ai-failure: fail` |
 | "Shallow clone detected" | `actions/checkout` with `fetch-depth: 0` |
 | "No release tag found" | Workflow not triggered by a tag; pass `to:` |
 | "is not a semver tag" | Set `tag-prefix`, or use `from`/`to` (explicit compare) |

@@ -8,7 +8,7 @@ import { renderMarkdown } from "./markdown.js";
 import { TAGLORE_VERSION } from "./meta.js";
 import { buildPromptWithReport, type ContextReport, extractJson } from "./prompt.js";
 import { fillPlaceholders, loadFacts, type ReleaseVars } from "./facts.js";
-import { compileTerms, evaluateAnswer, repairPrompt, styleIssues } from "./repair.js";
+import { compileTerms, evaluateAnswer, repairPrompt, styleIssues, type WritingStandard } from "./repair.js";
 import { copilotProvider } from "./providers/copilot.js";
 import { githubModelsProvider } from "./providers/github-models.js";
 import type { AiProvider, ProviderName } from "./providers/types.js";
@@ -139,6 +139,8 @@ export interface TagloreOptions {
   factsCommand?: string;
   /** Words or /regex/ that must not appear in user-facing text (environment names, codenames...). */
   forbiddenTerms?: string[];
+  /** asd-ste100: write in ASD-STE100 Simplified Technical English; its countable rules are checked in code. */
+  writingStandard?: WritingStandard;
   /** What happens when the final notes still break a style rule: warn (default) or strict (fail, nothing published). */
   styleCheck?: "warn" | "strict";
   /** Globs whose diffs go first when a big release doesn't fit the context budget. */
@@ -241,21 +243,22 @@ async function aiNotes(
     paths: normalizePaths(o.paths),
     maxContextBytes: maxContextKb * 1024,
     facts,
+    writingStandard: standardOf(o),
   });
   logContext(context, log);
   const terms = compileTerms(o.forbiddenTerms);
   log.info(`Asking ${provider.name} (${Math.round(Buffer.byteLength(prompt) / 1024)} KB prompt)...`);
   const first = await provider.generate(prompt);
-  let ev = evaluateAnswer(first.text, extractJson, changes.commits, terms);
+  let ev = evaluateAnswer(first.text, extractJson, changes.commits, terms, standardOf(o));
   if (!ev.issues.length && ev.notes) return { notes: ev.notes, model: first.model, context };
   // Length is the only problem: shorten in code, no second request.
-  if (ev.trimmed && !styleIssues(ev.trimmed, changes.commits, terms).length) {
+  if (ev.trimmed && !styleIssues(ev.trimmed, changes.commits, terms, standardOf(o)).length) {
     log.warn(`Shortened the AI answer to fit the limits: ${ev.issues.join("; ")}`);
     return { notes: ev.trimmed, model: first.model, context };
   }
   log.warn(`The AI answer was rejected (${ev.issues.slice(0, 5).join("; ")}). Asking once more with the reasons.`);
   const second = await provider.generate(repairPrompt(prompt, first.text, ev.issues));
-  ev = evaluateAnswer(second.text, extractJson, changes.commits, terms);
+  ev = evaluateAnswer(second.text, extractJson, changes.commits, terms, standardOf(o));
   if (ev.notes) {
     if (!ev.issues.length) log.info("The corrected answer passed.");
     // Remaining style issues are reported by the final style check (warn or strict).
@@ -266,6 +269,10 @@ async function aiNotes(
     return { notes: ev.trimmed, model: second.model, context };
   }
   throw new Error(`the answer was still invalid after a retry: ${ev.issues.slice(0, 5).join("; ")}`);
+}
+
+function standardOf(o: TagloreOptions): WritingStandard {
+  return o.writingStandard ?? "none";
 }
 
 function logContext(c: ContextReport, log: Logger) {
@@ -291,6 +298,13 @@ export async function runTaglore(opts: TagloreOptions = {}): Promise<TagloreResu
   const cwd = o.cwd ?? process.cwd();
   const prefix = o.tagPrefix ?? "v";
   const compare = o.compare ?? "auto";
+  const standard = standardOf(o);
+  if (standard !== "none" && standard !== "asd-ste100") {
+    throw new Error(`Invalid writing-standard "${o.writingStandard}". Use none or asd-ste100.`);
+  }
+  if (standard === "asd-ste100" && o.language && !/^en(glish)?\b/i.test(o.language.trim())) {
+    throw new Error(`writing-standard asd-ste100 is Simplified Technical English: it can't be combined with language "${o.language}".`);
+  }
   const patchNotes = o.patchNotes ?? "ai";
   if (!["commits", "ai", "announce"].includes(patchNotes)) {
     throw new Error(`Invalid patch-notes "${patchNotes}". Use commits, ai or announce.`);
@@ -460,7 +474,7 @@ export async function runTaglore(opts: TagloreOptions = {}): Promise<TagloreResu
   const styleCheck = o.styleCheck ?? "warn";
   if (styleCheck !== "warn" && styleCheck !== "strict") throw new Error(`Invalid style-check "${styleCheck}". Use warn or strict.`);
   // Reused notes (notes-from) are checked too: they may have been edited by hand after the review.
-  const remainingStyle = styleIssues(body, changes.commits, compileTerms(o.forbiddenTerms));
+  const remainingStyle = styleIssues(body, changes.commits, compileTerms(o.forbiddenTerms), standardOf(o));
   if (remainingStyle.length) {
     if (styleCheck === "strict") throw new Error(`Style check failed, nothing was published: ${remainingStyle.join("; ")}`);
     log.warn(`Style check: ${remainingStyle.join("; ")}`);

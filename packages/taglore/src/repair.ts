@@ -69,12 +69,55 @@ function userTexts(n: AiNotes): { where: string; text: string }[] {
   return out;
 }
 
+export type WritingStandard = "none" | "asd-ste100";
+
+/** Splits text into sentences: ., ! or ? followed by a space or the end. Decimals and versions stay whole. */
+export function sentences(text: string): string[] {
+  return text
+    .split(/(?<=[.!?])\s+(?=[A-Z0-9"'(])/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
+const wordCount = (s: string) => s.split(/\s+/).filter((w) => /[\p{L}\p{N}]/u.test(w)).length;
+
+/**
+ * The ASD-STE100 (Simplified Technical English, Issue 9) rules that can be counted in code.
+ * Release notes are descriptive text: 25 words per sentence, six sentences per paragraph.
+ * Breaking changes tell users what to do, so they get the 20-word limit for instructions.
+ * Semicolons are not used. The approved-word dictionary is left to the model: it can't be
+ * redistributed, and word choice can't be checked reliably without it.
+ */
+export function steIssues(n: AiNotes): string[] {
+  const issues: string[] = [];
+  const check = (where: string, text: string, max: number) => {
+    const list = sentences(text);
+    for (const s of list) {
+      const words = wordCount(s);
+      if (words > max) issues.push(`${where}: a sentence has ${words} words; ASD-STE100 allows ${max}. Split it: "${s.slice(0, 80)}${s.length > 80 ? "..." : ""}"`);
+    }
+    if (text.includes(";")) issues.push(`${where}: ASD-STE100 doesn't use semicolons; write two sentences`);
+    if (list.length > 6) issues.push(`${where}: ${list.length} sentences; ASD-STE100 allows six per paragraph`);
+  };
+  check("title", n.title, 25);
+  check("summary", n.summary, 25);
+  for (const key of ["highlights", "improvements", "fixes", "breaking"] as const) {
+    n[key].forEach((it, i) => {
+      const max = key === "breaking" ? 20 : 25;
+      check(`${key}.${i}.title`, it.title, max);
+      if (it.description) check(`${key}.${i}.description`, it.description, max);
+    });
+  }
+  return issues;
+}
+
 /**
  * Style rules checked in code, not only asked for in the prompt: no commit hashes in user-facing
- * text, and none of the maintainer's forbidden terms (environment names, internal codenames...).
+ * text, none of the maintainer's forbidden terms (environment names, internal codenames...), and
+ * the countable rules of a writing standard such as ASD-STE100.
  */
-export function styleIssues(n: AiNotes, commits: Commit[], terms: { label: string; re: RegExp }[]): string[] {
-  const issues: string[] = [];
+export function styleIssues(n: AiNotes, commits: Commit[], terms: { label: string; re: RegExp }[], standard: WritingStandard = "none"): string[] {
+  const issues: string[] = standard === "asd-ste100" ? steIssues(n) : [];
   const shas = commits.map((c) => c.sha.toLowerCase());
   for (const { where, text } of userTexts(n)) {
     for (const m of text.matchAll(/\b[0-9a-f]{7,40}\b/gi)) {
@@ -95,7 +138,13 @@ export interface Evaluation {
   trimmed?: AiNotes;
 }
 
-export function evaluateAnswer(text: string, extract: (t: string) => unknown, commits: Commit[], terms: { label: string; re: RegExp }[]): Evaluation {
+export function evaluateAnswer(
+  text: string,
+  extract: (t: string) => unknown,
+  commits: Commit[],
+  terms: { label: string; re: RegExp }[],
+  standard: WritingStandard = "none",
+): Evaluation {
   let raw: unknown;
   try {
     raw = extract(text);
@@ -109,7 +158,7 @@ export function evaluateAnswer(text: string, extract: (t: string) => unknown, co
     const fixed = lengthOnly ? AiNotesSchema.safeParse(trimToLimits(raw)) : null;
     return { issues, ...(fixed?.success ? { trimmed: fixed.data } : {}) };
   }
-  return { notes: parsed.data, issues: styleIssues(parsed.data, commits, terms) };
+  return { notes: parsed.data, issues: styleIssues(parsed.data, commits, terms, standard) };
 }
 
 export function repairPrompt(prompt: string, previous: string, issues: string[]): string {

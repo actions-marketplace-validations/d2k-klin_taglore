@@ -14,6 +14,8 @@ export interface PromptOptions {
   paths?: string[];
   /** Facts for this release from the maintainer (facts-file / facts-command). */
   facts?: string | null;
+  /** asd-ste100: write in ASD-STE100 Simplified Technical English. */
+  writingStandard?: "none" | "asd-ste100";
 }
 
 /** What part of the change the model actually saw. */
@@ -122,7 +124,18 @@ export function buildPromptWithReport(changes: ChangeSet, o: PromptOptions): { p
 
 TASK
 Summarize the changes from ${o.previousVersion ?? "the first commit"} to ${o.version} for ${o.audience}.${o.paths?.length ? `\nThis release covers only this part of the repository: ${o.paths.join(", ")}. Describe nothing outside it.` : ""}
-Write in ${o.language}. Tone: ${o.tone}.
+Write in ${o.language}. Tone: ${o.tone}.${
+    o.writingStandard === "asd-ste100"
+      ? `
+Write all text in ASD-STE100 Simplified Technical English (Issue 9). This is required:
+- Descriptive text: at most 25 words in each sentence, one topic in each sentence, at most six sentences in a paragraph.
+- Breaking changes tell the reader what to do: use the imperative, at most 20 words and one instruction in each sentence.
+- Use the active voice and simple tenses (present, past, future). Do not use semicolons.
+- Use approved words from the ASD-STE100 dictionary in their approved meaning. Use one word for one meaning, and always the same word for the same thing.
+- Use the names of the product, its features and its user interface exactly as they are written.
+- Do not use idioms, phrasal verbs, contractions or more than three nouns in a row.`
+      : ""
+  }
 
 RULES
 - Describe what users can now do or what got better, not how the code changed.${o.previousVersion ? "" : "\n- This is the FIRST release: describe what the product offers. Leave \"breaking\" empty; nothing existed before."}

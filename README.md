@@ -1,16 +1,13 @@
 # Taglore
 
-**AI-written release notes from git tags.** Push `v1.9.0`, and Taglore compares it with the right earlier version, has GitHub Copilot write user-friendly notes, and publishes them to:
+[![CI](https://github.com/d2k-klin/taglore/actions/workflows/ci.yml/badge.svg)](https://github.com/d2k-klin/taglore/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/d2k-klin/taglore?sort=semver)](https://github.com/d2k-klin/taglore/releases/latest)
+[![Marketplace](https://img.shields.io/badge/GitHub%20Marketplace-Taglore-2ea44f?logo=github)](https://github.com/marketplace/actions/taglore)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-- **GitHub Releases** (Markdown, by default)
-- **a folder** in your Docker build context, so the image carries its own `latest.json`
-- **a workflow artifact** for a later job
-- **a changelog page**: `history.json` with every release, plus ready-made components to show it
-- **a Security section** (optional): vulnerabilities fixed and introduced since the last release, from Syft and Grype, plus a CycloneDX SBOM per release
-- **S3** for apps or CDNs that fetch notes at runtime
-- **your app's What's New dialog**, in any stack: a [web component](examples/apps/any-frontend) for any frontend, a [React component](packages/whats-new), or a few lines of code in your backend
+**Release notes your users actually read, written from your git tags.**
 
-It works with any language. Taglore writes plain JSON and Markdown files; Node, Python, Go, Java, .NET, PHP or a static nginx site can all serve or read them. No database, no SaaS, no AI calls at runtime. Notes ship with the image they describe.
+Push `v1.9.0`. Taglore compares it with the right earlier version, has GitHub Copilot describe the change for users, checks every statement against the real commits, and publishes the notes where they are needed: the GitHub Release, your Docker image, an artifact or S3. Your app shows them in a What's New dialog and a changelog page. No database, no SaaS, no AI calls at runtime.
 
 ```yaml
 # .github/workflows/release-notes.yml
@@ -30,8 +27,34 @@ jobs:
           fetch-depth: 0 # Taglore needs tags and history
       - uses: d2k-klin/taglore@v1
         with:
-          copilot-token: ${{ secrets.COPILOT_TOKEN }}
+          copilot-token: ${{ secrets.COPILOT_TOKEN }} # see "GitHub Copilot setup"
 ```
+
+## Why Taglore
+
+- **It compares the right versions.** A minor release is compared with the previous minor, so every patch in between is covered. Patches keep the last announcement, so nobody gets a popup for a bug fix.
+- **Notes ship with the image they describe.** `latest.json` goes into your Docker build. A rollback rolls back the announcement too, and nothing has to be kept in sync.
+- **The AI output is untrusted input.** A narrow schema, sanitizing, plain-text rendering, and evidence: every statement must point at real commits in the release, or it is reported or removed.
+- **Works with any stack.** Plain JSON and Markdown files that Node, Python, Go, Java, .NET, PHP or nginx can serve, plus a dependency-free web component and a React component.
+- **Fits the pipeline you have.** Release Please, monorepos, immutable releases, locked-down organizations (a single-file CLI with checksums and build provenance).
+- **Security notes per release** (optional): vulnerabilities fixed and introduced since the last release, from Syft and Grype, plus a CycloneDX SBOM.
+
+## What you get
+
+- **GitHub Release** with Markdown notes (by default)
+- **A folder** in your Docker build context: `latest.json`, `release.json`, `history.json`, `RELEASE_NOTES.md`
+- **Your app's What's New dialog**, in any stack: a [web component](examples/apps/any-frontend), a [React component](packages/whats-new), or a few lines in your backend
+- **A changelog page** from `history.json`, with ready-made components
+- **A Security section and SBOM** per release (`security-scan: true`)
+- **A workflow artifact** for a later job, and **S3** for apps or CDNs that fetch notes at runtime
+
+## Contents
+
+- [How versions are compared](#how-versions-are-compared)
+- [GitHub Copilot setup](#github-copilot-setup)
+- [Recipes](#recipes): [Docker](#docker-any-language) · [What's New dialog](#whats-new-dialog-in-the-frontend) · [Review before publishing](#review-before-publishing-evidence-and-preview) · [Facts](#facts-the-ai-cant-see-in-the-code) · [Style rules](#style-rules-checked-in-code) · [Big releases](#big-releases) · [Unreleased](#unreleased-changes) · [Immutable releases](#immutable-releases-or-no-github-releases-at-all) · [Changelog page](#changelog-page) · [Security](#security-notes-and-sbom-per-release) · [Release Please](#with-release-please) · [Monorepos](#monorepos)
+- [Inputs](#inputs) · [CLI](#cli) · [Files and format](#files-and-format)
+- [Security](#security) · [Use it with an AI coding agent](#use-it-with-an-ai-coding-agent) · [Contributing](#contributing)
 
 ## How versions are compared
 
@@ -53,7 +76,7 @@ Other modes: `previous-tag`, `previous-minor`, `previous-major`, or `explicit` w
 |---|---|---|
 | `ai` (default) | AI | the last major/minor announcement, so nobody gets a popup for a bug fix |
 | `announce` | AI | this patch, with `announce: true`, like a minor |
-| `commits` | commit messages | the last major/minor announcement (the behaviour before v1.4.0) |
+| `commits` | commit messages | the last major/minor announcement |
 
 Every release gets a `taglore.json` asset. On a patch that doesn't announce, Taglore downloads the announcement from the last minor's release and writes it as `latest.json`, so the image you build for `v1.9.1` still contains the `v1.9.0` What's New. If there is none (Taglore was adopted on a patch, or no token to fetch it), a patch's `latest.json` holds its own notes with `announce: false`: a "What's new" menu item has content, and nobody gets a popup. `patch-notes` adds to `ai-for` and `announce-on`; a type you list there is never removed.
 
@@ -553,7 +576,11 @@ skills/taglore/           Agent skill
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). `main` is protected; changes go through pull requests.
+Bug reports, ideas and pull requests are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for the development setup, and the [code of conduct](CODE_OF_CONDUCT.md).
+
+- **Questions and bugs:** [open an issue](https://github.com/d2k-klin/taglore/issues/new/choose).
+- **Security reports:** privately, see [SECURITY.md](SECURITY.md).
+- **Changelog:** every [release](https://github.com/d2k-klin/taglore/releases) has notes, written by Taglore itself.
 
 ## License
 

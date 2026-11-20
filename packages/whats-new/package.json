@@ -4,7 +4,9 @@
   "description": "What's New dialog and changelog page for Taglore release notes: React components and framework-free web components for any frontend.",
   "license": "MIT",
   "homepage": "https://github.com/d2k-klin/taglore/tree/main/packages/whats-new#readme",
-  "publishConfig": { "access": "public" },
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "repository": {
     "type": "git",
@@ -63,5 +65,9 @@
     "react": {
       "optional": true
     }
-  }
+  },
+  "bugs": {
+    "url": "https://github.com/d2k-klin/taglore/issues"
+  },
+  "author": "d2k-klin (https://github.com/d2k-klin)"
 }

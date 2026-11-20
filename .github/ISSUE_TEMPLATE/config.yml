@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://github.com/d2k-klin/taglore#readme
+    about: Inputs, recipes and the file format.
+  - name: Report a security problem
+    url: https://github.com/d2k-klin/taglore/security/advisories/new
+    about: Please report vulnerabilities privately, not in a public issue.

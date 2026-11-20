@@ -261,7 +261,7 @@ describe("writing-standard: asd-ste100", () => {
     expect(sentences("Version 1.2 is out. It is fast! Is it? Yes.")).toEqual(["Version 1.2 is out.", "It is fast!", "Is it?", "Yes."]);
     const base = { title: "T", summary: "One. Two. Three. Four. Five. Six. Seven.", highlights: [], improvements: [], fixes: [], breaking: [] };
     expect(steIssues(base)).toEqual(["summary: 7 sentences; ASD-STE100 allows six per paragraph"]);
-    const breaking = { ...base, summary: "S.", breaking: [{ title: "Old API removed", description: "Change every call to the old endpoint so that it uses the new endpoint with the same parameters and the new header today." }] };
+    const breaking = { ...base, summary: "S.", breaking: [{ title: "Old API removed", commits: [], description: "Change every call to the old endpoint so that it uses the new endpoint with the same parameters and the new header today." }] };
     expect(steIssues(breaking)[0]).toMatch(/breaking\.0\.description: a sentence has 2\d words; ASD-STE100 allows 20/);
     // Without the standard, nothing is checked.
     expect(styleIssues({ ...base }, [], [])).toEqual([]);

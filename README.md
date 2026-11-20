@@ -213,7 +213,10 @@ Prompt wording alone doesn't guarantee style. Taglore checks the answer itself:
 - **Commit hashes** in user-facing text are always flagged; they belong in the evidence, not the copy.
 - **`forbidden-terms`**: words (whole word, case-insensitive) or `/regex/` that must never appear, such as environment names or codenames. A hit triggers the same corrective retry.
 
+- **`writing-standard: asd-ste100`** writes the notes in [ASD-STE100 Simplified Technical English](https://www.asd-ste100.org/) (Issue 9): short sentences, active voice, one topic per sentence, approved words. For products in aerospace, defence and other regulated industries, or for readers who don't speak English as a first language. The countable rules are checked in code: at most 25 words in a sentence (20 for breaking-change instructions), six sentences in a paragraph, no semicolons. Word choice follows the STE dictionary as far as the model knows it; Taglore can't check it, because the dictionary can't be redistributed. English only.
+
 ```yaml
+    writing-standard: asd-ste100
     forbidden-terms: staging, dev, /prod-(eu|us)-\d/
     style-check: strict    # still broken after the retry: fail and publish nothing (default: warn)
 ```
@@ -446,6 +449,7 @@ More in [examples/workflows](examples/workflows).
 | `facts-file` | | Per-release facts for the AI, e.g. `docs/release-facts/{version}.md`; missing file = none |
 | `facts-command` | | Command that prints per-release facts; gets `TAGLORE_VERSION`, `TAGLORE_FROM`, `TAGLORE_TO`, `TAGLORE_RELEASE_TYPE` |
 | `forbidden-terms` | | Words or `/regex/` that must not appear in the notes; a hit gets one corrective retry |
+| `writing-standard` | `none` | `asd-ste100`: ASD-STE100 Simplified Technical English, countable rules checked in code (English only) |
 | `style-check` | `warn` | `strict` fails (nothing published) when a style rule is still broken after the retry |
 | `focus-paths` | | Globs whose diffs go first when a release is larger than `max-diff-kb` |
 | `exclude` | | Extra globs kept out of the AI context |
@@ -499,7 +503,7 @@ npx --package=https://github.com/d2k-klin/taglore/releases/latest/download/taglo
 Locked-down environments that can't use the action, or can't install packages on every run, can use `taglore.mjs`: one file with every dependency inside, attached to each release with `SHA256SUMS` and a signed build provenance attestation.
 
 ```bash
-gh release download v1.6.0 -R d2k-klin/taglore -p taglore.mjs -p SHA256SUMS
+gh release download v1.7.0 -R d2k-klin/taglore -p taglore.mjs -p SHA256SUMS
 sha256sum --check --ignore-missing SHA256SUMS
 gh attestation verify taglore.mjs -R d2k-klin/taglore     # built by this repository's release workflow
 node taglore.mjs generate --to v1.9.0 --dry-run           # Node 20+, nothing else

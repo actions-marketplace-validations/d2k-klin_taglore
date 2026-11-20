@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { collectChanges, filePriority, globToRegExp } from "../src/collect.js";
 import { buildPromptWithReport } from "../src/prompt.js";
-import { compileTerms, styleIssues, trimToLimits } from "../src/repair.js";
+import { compileTerms, sentences, steIssues, styleIssues, trimToLimits } from "../src/repair.js";
 import { runTaglore } from "../src/run.js";
 
 const silent = { info: () => {}, warn: () => {} };
@@ -224,6 +224,47 @@ describe("unreleased", () => {
     answers(good());
     const r = await runTaglore({ ...base, cwd: repo, unreleased: true, unreleasedLabel: "Upcoming", copilotCommand: fake, dryRun: true });
     expect(r.notes.version).toBe("Upcoming");
+  });
+});
+
+describe("writing-standard: asd-ste100", () => {
+  const long = "This release makes the search page much faster for every user because the results are now loaded in smaller pages while you type into the box";
+
+  it("tells the model to write STE and retries when a sentence is too long", async () => {
+    answers(
+      JSON.stringify({ title: "Faster search", summary: long + ".", highlights: [{ title: "Quicker search", commits: [] }], improvements: [], fixes: [], breaking: [] }),
+      good(),
+    );
+    const r = await runTaglore({ ...base, cwd: repo, to: "v1.1.0", copilotCommand: fake, writingStandard: "asd-ste100" });
+    const ps = prompts();
+    expect(ps[0]).toContain("ASD-STE100 Simplified Technical English");
+    expect(ps).toHaveLength(2);
+    expect(ps[1]).toMatch(/summary: a sentence has 2\d words; ASD-STE100 allows 25/);
+    expect(r.styleIssues).toEqual([]);
+  });
+
+  it("strict fails when the retry still breaks a rule", async () => {
+    answers(JSON.stringify({ title: "Faster search", summary: "Search is faster; results load sooner.", highlights: [], improvements: [], fixes: [], breaking: [] }));
+    await expect(
+      runTaglore({ ...base, cwd: repo, to: "v1.1.0", copilotCommand: fake, writingStandard: "asd-ste100", styleCheck: "strict" }),
+    ).rejects.toThrow(/semicolons/);
+  });
+
+  it("is English only, and rejects unknown standards", async () => {
+    await expect(runTaglore({ ...base, cwd: repo, to: "v1.1.0", provider: "none", writingStandard: "asd-ste100", language: "German", dryRun: true })).rejects.toThrow(/English/);
+    await expect(runTaglore({ ...base, cwd: repo, to: "v1.1.0", provider: "none", writingStandard: "plain" as never, dryRun: true })).rejects.toThrow(/Invalid writing-standard/);
+    const ok = await runTaglore({ ...base, cwd: repo, to: "v1.1.0", provider: "none", writingStandard: "asd-ste100", language: "English (US)", dryRun: true });
+    expect(ok.version).toBe("v1.1.0");
+  });
+
+  it("unit: sentences, limits, paragraph length", () => {
+    expect(sentences("Version 1.2 is out. It is fast! Is it? Yes.")).toEqual(["Version 1.2 is out.", "It is fast!", "Is it?", "Yes."]);
+    const base = { title: "T", summary: "One. Two. Three. Four. Five. Six. Seven.", highlights: [], improvements: [], fixes: [], breaking: [] };
+    expect(steIssues(base)).toEqual(["summary: 7 sentences; ASD-STE100 allows six per paragraph"]);
+    const breaking = { ...base, summary: "S.", breaking: [{ title: "Old API removed", commits: [], description: "Change every call to the old endpoint so that it uses the new endpoint with the same parameters and the new header today." }] };
+    expect(steIssues(breaking)[0]).toMatch(/breaking\.0\.description: a sentence has 2\d words; ASD-STE100 allows 20/);
+    // Without the standard, nothing is checked.
+    expect(styleIssues({ ...base }, [], [])).toEqual([]);
   });
 });
 

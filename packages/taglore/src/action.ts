@@ -93,6 +93,7 @@ async function main() {
     factsCommand: input("facts-command"),
     forbiddenTerms: list<string>("forbidden-terms"),
     styleCheck: input("style-check") as "warn" | "strict" | undefined,
+    writingStandard: input("writing-standard") as "none" | "asd-ste100" | undefined,
     focusPaths: list<string>("focus-paths"),
     cwd: input("working-directory") ?? process.cwd(),
     to: input("to"),

@@ -153,6 +153,10 @@ inputs:
   forbidden-terms:
     description: "Words (whole word, case-insensitive) or /regex/ that must not appear in the notes, comma or newline separated: environment names, codenames. Commit hashes are always checked. A violation gets one corrective retry."
     required: false
+  writing-standard:
+    description: "asd-ste100: write the notes in ASD-STE100 Simplified Technical English (Issue 9). Sentence length (25 words, 20 for breaking-change instructions), sentences per paragraph and semicolons are checked in code like other style rules. English only."
+    required: false
+    default: none
   style-check:
     description: "warn: report style violations left after the retry. strict: fail and publish nothing."
     required: false

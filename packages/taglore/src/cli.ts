@@ -36,6 +36,7 @@ AI
                           (--facts-from is an alias)
   --forbid <term>         Word or /regex/ that must not appear in the notes (repeatable)
   --style-check <mode>    warn | strict: what happens when a style rule is still broken (default: warn)
+  --writing-standard <s>  none | asd-ste100 (Simplified Technical English; English only)
   --focus <glob>          Diffs that go first when a big release doesn't fit (repeatable)
   --exclude <glob>        Extra path to keep out of the AI context (repeatable)
   --max-diff-kb <n>       Change context sent to the AI in KB (default: 300, github-models: 20, max 4096)
@@ -125,6 +126,7 @@ async function main() {
       "facts-from": { type: "string" },
       forbid: { type: "string", multiple: true },
       "style-check": { type: "string" },
+      "writing-standard": { type: "string" },
       focus: { type: "string", multiple: true },
       help: { type: "boolean", short: "h" },
       version: { type: "boolean", short: "v" },
@@ -179,6 +181,7 @@ async function main() {
     factsCommand: values["facts-command"] ?? values["facts-from"],
     forbiddenTerms: values.forbid,
     styleCheck: values["style-check"] as "warn" | "strict" | undefined,
+    writingStandard: values["writing-standard"] as "none" | "asd-ste100" | undefined,
     focusPaths: values.focus,
     log: quiet ? { info: () => {}, warn: (m) => console.error(`warning: ${m}`) } : undefined,
   });

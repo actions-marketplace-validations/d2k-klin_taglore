@@ -2,7 +2,7 @@
   "name": "taglore-monorepo",
   "private": true,
   "type": "module",
-  "description": "Taglore: AI-written release notes from git tags, published to GitHub Releases, Docker builds, S3 and an in-app What's New dialog.",
+  "description": "Taglore: release notes, changelog and security evidence from git tags, with an in-app What's New dialog.",
   "license": "MIT",
   "workspaces": [
     "packages/taglore",

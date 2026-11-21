@@ -26,11 +26,12 @@
 @media (prefers-color-scheme: dark) {
   .taglore-wn, .taglore-cl { --taglore-wn-bg: #111827; --taglore-wn-fg: #f9fafb; --taglore-wn-muted: #9ca3af; --taglore-wn-accent: #818cf8; --taglore-wn-warn: #fbbf24; }
 }
-.taglore-wn__header { flex: none; padding: 1.5rem 1.5rem 0.5rem; }
+/* display is set explicitly: a page-wide header { display: flex } must not reshape the dialog. */
+.taglore-wn__header { flex: none; display: block; padding: 1.5rem 1.5rem 0.5rem; }
 .taglore-wn__eyebrow { margin: 0 0 0.25rem; font-size: 0.75rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--taglore-wn-accent); font-weight: 600; }
 .taglore-wn__title { margin: 0 0 0.5rem; font-size: 1.25rem; line-height: 1.3; }
 .taglore-wn__summary { margin: 0; color: var(--taglore-wn-muted); line-height: 1.5; }
-.taglore-wn__body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0.5rem 1.5rem; }
+.taglore-wn__body { display: block; flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0.5rem 1.5rem; }
 .taglore-wn__section-title { margin: 1rem 0 0.5rem; font-size: 0.875rem; }
 .taglore-wn__section--breaking .taglore-wn__section-title { color: var(--taglore-wn-warn); }
 .taglore-wn__list { margin: 0; padding-left: 1.1rem; display: grid; gap: 0.4rem; line-height: 1.45; }

@@ -39,5 +39,6 @@ Tests run against real git repositories in temp folders, and the GitHub API is m
 
 1. Bump the version in `packages/taglore/package.json`, `packages/taglore/src/meta.ts` and `packages/whats-new/package.json`, run `npm run build`, and get it onto `main`.
 2. The release workflow sees a version without a tag and does the rest: creates the `vX.Y.Z` tag, writes the notes with Taglore itself into a draft release, attaches the self-contained CLI (`taglore.mjs`), the tarballs and `SHA256SUMS`, attests their build provenance, publishes the release and moves the `vX` major tag.
-3. Optional secrets: `COPILOT_TOKEN` (AI notes; without it the notes come from commit messages), `RELEASE_TOKEN` (to move the major tag when workflow files changed), `NPM_TOKEN` (also publish to npm).
-4. Tick "Publish this Action to the GitHub Marketplace" on the new release to update the listing.
+3. Optional secrets: `COPILOT_TOKEN` (AI notes; without it the notes come from commit messages) and `RELEASE_TOKEN` (to move the major tag when workflow files changed).
+4. npm is off until it's turned on. Recommended: add `.github/workflows/release.yml` as a trusted publisher for `taglore` and `@taglore/whats-new` on npmjs.com and set the repository variable `NPM_TRUSTED_PUBLISHING=true` (no token, provenance included). A classic `NPM_TOKEN` secret works too. A package's very first version usually has to be published by hand before a trusted publisher can be added.
+5. Tick "Publish this Action to the GitHub Marketplace" on the new release to update the listing.

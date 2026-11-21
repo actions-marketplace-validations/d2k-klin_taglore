@@ -155,7 +155,14 @@ describe("runTaglore end to end", () => {
     expect(r.notes.fixes.length).toBe(2);
   });
 
-  it("first release compares from the root commit", async () => {
+  it("an unknown tag gives a clear error, not git's", async () => {
+    await expect(runTaglore({ cwd: repo, to: "v9.9.9", provider: "none", publishGithubRelease: false, dryRun: true, log: silent })).rejects.toThrow(
+      /"v9\.9\.9" is not a tag, branch or commit in this repository/,
+    );
+    await expect(runTaglore({ cwd: repo, to: "v1.1.1", from: "nope", compare: "explicit", provider: "none", publishGithubRelease: false, dryRun: true, log: silent })).rejects.toThrow(/"nope" is not a tag/);
+  });
+
+    it("first release compares from the root commit", async () => {
     const r = await runTaglore({ cwd: repo, to: "v1.0.0", provider: "none", publishGithubRelease: false, dryRun: true, log: silent });
     expect(r.previousVersion).toBeNull();
     expect(r.notes.highlights.map((h) => h.title)).toEqual(["First feature"]);

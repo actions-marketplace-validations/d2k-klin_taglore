@@ -70,6 +70,71 @@ jobs:
           test ! -e "$RUNNER_TEMP/demo/out/preview.html"
           grep -q "taglore-changelog" "$RUNNER_TEMP/demo/out/taglore-whats-new.js"
 
+  release-scenarios:
+    # The real action (uses: ./) against one fixture repo, once per release scenario.
+    # github-token is empty so nothing is read from this repository's own releases.
+    name: scenario (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: first release, to: v1.0.0, prev: "", type: major, announce: "true", provider: none, want: fallback }
+          - { name: patch, to: v1.0.1, prev: v1.0.0, type: patch, announce: "false", provider: none, want: fallback }
+          - { name: minor covers its patches, to: v1.1.0, prev: v1.0.0, type: minor, announce: "true", provider: none, want: fallback }
+          - { name: major, to: v2.0.0, prev: v1.1.0, type: major, announce: "true", provider: none, want: fallback }
+          - { name: prerelease, to: v2.0.0-rc.1, prev: v1.1.1, type: prerelease, announce: "false", provider: none, want: fallback }
+          - { name: unreleased, unreleased: "true", version: Unreleased, prev: v2.0.0, type: unreleased, announce: "false", provider: none, want: fallback }
+          - { name: AI fails, to: v1.1.0, prev: v1.0.0, type: minor, announce: "true", provider: github-models, token: job, want: fallback }
+          - { name: unknown tag, to: v9.9.9, provider: none, fails: "true" }
+    steps:
+      - uses: actions/checkout@v6
+      - run: scripts/scenario-repo.sh "$RUNNER_TEMP/fixture"
+      - id: notes
+        uses: ./
+        continue-on-error: ${{ matrix.fails == 'true' }}
+        with:
+          working-directory: ${{ runner.temp }}/fixture
+          to: ${{ matrix.to }}
+          unreleased: ${{ matrix.unreleased || 'false' }}
+          ai-provider: ${{ matrix.provider }}
+          # "AI fails": the job token has no models: read, so inference is refused.
+          github-token: ${{ matrix.token == 'job' && github.token || '' }}
+          publish-github-release: false
+          output-dir: out
+      - name: Check the outcome
+        env:
+          OUTCOME: ${{ steps.notes.outcome }}
+          VERSION: ${{ steps.notes.outputs.version }}
+          PREV: ${{ steps.notes.outputs.previous-version }}
+          TYPE: ${{ steps.notes.outputs.release-type }}
+          ANNOUNCE: ${{ steps.notes.outputs.announce }}
+          PROVIDER: ${{ steps.notes.outputs.provider }}
+        run: |
+          set -x
+          if [ "${{ matrix.fails }}" = "true" ]; then
+            test "$OUTCOME" = "failure"
+            exit 0
+          fi
+          test "$OUTCOME" = "success"
+          test "$VERSION" = "${{ matrix.version || matrix.to }}"
+          test "$PREV" = "${{ matrix.prev }}"
+          test "$TYPE" = "${{ matrix.type }}"
+          test "$ANNOUNCE" = "${{ matrix.announce }}"
+          test "$PROVIDER" = "${{ matrix.want }}"
+          out="$RUNNER_TEMP/fixture/out"
+          test "$(jq -r .version "$out/release.json")" = "$VERSION"
+          # Prereleases stay out of the changelog: no history.json for them.
+          if [ "$TYPE" = "prerelease" ]; then
+            test ! -e "$out/history.json"
+          else
+            test "$(jq -r '.releases[0].version' "$out/history.json")" = "$VERSION"
+          fi
+          # Every published statement points at a commit inside the compared range.
+          jq -e '[.highlights[], .improvements[], .fixes[], .breaking[]] | all(.commits | length > 0)' "$out/release.json"
+
   security-smoke-test:
     # Real Syft + Grype against a demo repo: lodash goes from 4.17.15 (known advisories) to 4.17.21.
     runs-on: ubuntu-latest

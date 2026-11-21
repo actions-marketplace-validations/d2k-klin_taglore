@@ -1,5 +1,5 @@
 name: Taglore Release Notes
-description: AI-written release notes from git tags, for GitHub Releases, Docker builds, artifacts, S3 and in-app What's New.
+description: Release notes, changelog and security evidence from git tags, checked against real commits and shipped as What's New.
 author: d2k-klin
 branding:
   icon: book-open

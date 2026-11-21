@@ -19,7 +19,17 @@ export async function isShallow(cwd: string): Promise<boolean> {
 }
 
 export async function resolveRef(ref: string, cwd: string): Promise<string> {
-  return (await git(["rev-parse", "--verify", `${ref}^{commit}`], cwd)).trim();
+  try {
+    return (await git(["rev-parse", "--verify", "--quiet", `${ref}^{commit}`], cwd)).trim();
+  } catch {
+    const shallow = (await git(["rev-parse", "--is-shallow-repository"], cwd).catch(() => "")).trim() === "true";
+    throw new Error(
+      `"${ref}" is not a tag, branch or commit in this repository.` +
+        (shallow
+          ? " The checkout is shallow: use actions/checkout with fetch-depth: 0 so tags and history are there."
+          : " Check the name, or fetch tags first (git fetch --tags)."),
+    );
+  }
 }
 
 export async function refDate(ref: string, cwd: string): Promise<string> {

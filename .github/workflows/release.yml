@@ -135,22 +135,33 @@ jobs:
             echo "::warning::Could not move $MAJOR to $TAG (workflow files changed and the token lacks the workflows permission). Add a RELEASE_TOKEN secret, or run: git tag -f $MAJOR $TAG && git push -f origin $MAJOR"
           fi
 
-      - name: Publish to npm (only when an NPM_TOKEN secret exists)
+      # npm is off until the maintainer turns it on:
+      #   trusted publishing (recommended, no token): set the repository variable
+      #   NPM_TRUSTED_PUBLISHING=true after adding this workflow as trusted publisher on npmjs.com;
+      #   or a classic NPM_TOKEN secret. Provenance is published either way.
+      - name: Publish to npm (when enabled)
         if: steps.version.outputs.create != 'skip'
         env:
+          NPM_TRUSTED_PUBLISHING: ${{ vars.NPM_TRUSTED_PUBLISHING }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          if [ -z "$NPM_TOKEN" ]; then
-            echo "No NPM_TOKEN secret; skipping npm. The release tarballs are the supported install path."
+          if [ "$NPM_TRUSTED_PUBLISHING" = "true" ]; then
+            # Trusted publishing needs npm 11.5.1 or later; provenance is automatic.
+            npm install -g npm@latest
+            auth=()
+          elif [ -n "$NPM_TOKEN" ]; then
+            echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > "$RUNNER_TEMP/npmrc"
+            auth=(--userconfig "$RUNNER_TEMP/npmrc" --provenance)
+          else
+            echo "npm publishing is off (no NPM_TRUSTED_PUBLISHING variable, no NPM_TOKEN secret). The release files are the install path."
             exit 0
           fi
-          echo "//registry.npmjs.org/:_authToken=${NPM_TOKEN}" > "$RUNNER_TEMP/npmrc"
           for dir in packages/taglore packages/whats-new; do
             name=$(node -p "require('./$dir/package.json').name")
             version=$(node -p "require('./$dir/package.json').version")
             if [ -n "$(npm view "$name@$version" version 2>/dev/null)" ]; then
               echo "$name@$version is already on npm."
             else
-              npm publish "./$dir" --access public --userconfig "$RUNNER_TEMP/npmrc"
+              npm publish "./$dir" --access public "${auth[@]}"
             fi
           done

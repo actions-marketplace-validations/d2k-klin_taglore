@@ -5,7 +5,9 @@
 [![Marketplace](https://img.shields.io/badge/GitHub%20Marketplace-Taglore-2ea44f?logo=github)](https://github.com/marketplace/actions/taglore)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-**Release notes your users actually read, written from your git tags.**
+**Release notes, changelog and security evidence, straight from your git tags.**
+
+Users get notes they actually read, shown in your app. Reviewers get evidence: every statement points at real commits, and every release can carry a vulnerability diff and an SBOM.
 
 Push `v1.9.0`. Taglore compares it with the right earlier version, has GitHub Copilot describe the change for users, checks every statement against the real commits, and publishes the notes where they are needed: the GitHub Release, your Docker image, an artifact or S3. Your app shows them in a What's New dialog and a changelog page. No database, no SaaS, no AI calls at runtime.
 
@@ -29,6 +31,12 @@ jobs:
         with:
           copilot-token: ${{ secrets.COPILOT_TOKEN }} # see "GitHub Copilot setup"
 ```
+
+New here? **[Try Taglore in 10 minutes](docs/getting-started.md)**: local preview, GitHub Releases, then the dialog in your app.
+
+<p align="center">
+  <img src="docs/images/whats-new.png" alt="A What's New dialog in a sample app: title, summary, highlights, improvements and fixes written from the release's commits" width="720">
+</p>
 
 ## Why Taglore
 
@@ -54,7 +62,7 @@ jobs:
 - [GitHub Copilot setup](#github-copilot-setup)
 - [Recipes](#recipes): [Docker](#docker-any-language) · [What's New dialog](#whats-new-dialog-in-the-frontend) · [Review before publishing](#review-before-publishing-evidence-and-preview) · [Facts](#facts-the-ai-cant-see-in-the-code) · [Style rules](#style-rules-checked-in-code) · [Big releases](#big-releases) · [Unreleased](#unreleased-changes) · [Immutable releases](#immutable-releases-or-no-github-releases-at-all) · [Changelog page](#changelog-page) · [Security](#security-notes-and-sbom-per-release) · [Release Please](#with-release-please) · [Monorepos](#monorepos)
 - [Inputs](#inputs) · [CLI](#cli) · [Files and format](#files-and-format)
-- [Security](#security) · [Use it with an AI coding agent](#use-it-with-an-ai-coding-agent) · [Contributing](#contributing)
+- [Security](#security) · [What's tested](#whats-tested) · [Use it with an AI coding agent](#use-it-with-an-ai-coding-agent) · [Contributing](#contributing)
 
 ## How versions are compared
 
@@ -281,6 +289,8 @@ steps:
 Each run reads `history.json` from that branch and writes it back with `latest.json`, in one commit. Backfill skips the tags it already holds, and patches find their announcement in it, all without reading a single release asset. It also works with `publish-github-release: false`, and apps can read the files straight from the branch. In a monorepo each tag prefix gets its own folder (`history-branch-dir`). The CLI does the same with `--history-file`: keep the file wherever you like.
 
 ### Changelog page
+
+<img src="docs/images/changelog.png" alt="The changelog page: every release with version, date, title and sections, plus a search box" width="640">
 
 Every run also writes `history.json`: this release followed by the earlier ones, newest first (`history-limit`, default 20). Earlier releases are read from your GitHub Releases, or from `history-branch` / `history-file`, so there is still no database. Serve it next to `latest.json` and show it with one tag:
 
@@ -526,7 +536,7 @@ npx --package=https://github.com/d2k-klin/taglore/releases/latest/download/taglo
 Locked-down environments that can't use the action, or can't install packages on every run, can use `taglore.mjs`: one file with every dependency inside, attached to each release with `SHA256SUMS` and a signed build provenance attestation.
 
 ```bash
-gh release download v1.7.0 -R d2k-klin/taglore -p taglore.mjs -p SHA256SUMS
+gh release download v1.7.1 -R d2k-klin/taglore -p taglore.mjs -p SHA256SUMS
 sha256sum --check --ignore-missing SHA256SUMS
 gh attestation verify taglore.mjs -R d2k-klin/taglore     # built by this repository's release workflow
 node taglore.mjs generate --to v1.9.0 --dry-run           # Node 20+, nothing else
@@ -557,6 +567,28 @@ JSON follows [`schema/release.schema.json`](schema/release.schema.json): `versio
 - Lockfiles, build output, binaries, images, `.env*`, `*.pem` and `*.key` never reach the AI. Add more with `exclude`.
 - Don't run Taglore on `pull_request_target` or fork-triggered workflows with secrets.
 - S3 uses the job's AWS credentials (OIDC). Taglore never takes AWS keys as inputs.
+
+## What's tested
+
+Every push runs the real action (`uses: ./`) against a fixture repository, once per release scenario, and checks the compared version, the release type, the announcement and that every statement points at a commit in the range:
+
+| Scenario | Expected | Where |
+|---|---|---|
+| First release (`v1.0.0`) | compared from the root commit, announced | CI `release-scenarios` |
+| Patch (`v1.0.1`) | vs `v1.0.0`, keeps the last announcement | CI `release-scenarios` |
+| Minor (`v1.1.0`) | vs the previous minor, so its patches are covered | CI `release-scenarios` |
+| Major (`v2.0.0`) | vs the last minor, announced | CI `release-scenarios` |
+| Prerelease (`v2.0.0-rc.1`) | vs the previous tag, never announced | CI `release-scenarios` |
+| Unreleased | last tag to `HEAD`, labelled, no release | CI `release-scenarios` |
+| AI call refused | falls back to commit-based notes, release continues | CI `release-scenarios` |
+| Unknown tag | stops with a clear message | CI `release-scenarios`, `run.test.ts` |
+| Scanner missing, released image missing, previous image gone | clear error, or "not compared" instead of false "introduced" | `security-run.test.ts` |
+| Real Syft/Grype, repository and image | fixed, introduced and open counts | CI `security-smoke-test` |
+| Monorepo paths | other apps never leak into notes or scans | CI `monorepo-smoke-test` |
+| Interrupted publishing (draft left behind), immutable releases, concurrent history writes | finished, not duplicated; merged, not lost | `backfill.test.ts` (GitHub API mock) |
+| Invalid or too-long AI answers, forbidden terms, ASD-STE100 rules | one corrective retry, or trimmed | `feedback.test.ts` |
+
+The unit tests (`npm test`) run against real git repositories in temp folders and need no network or token. The release files themselves are checksummed and carry a build provenance attestation.
 
 ## Use it with an AI coding agent
 

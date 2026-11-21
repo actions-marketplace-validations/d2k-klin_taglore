@@ -126,7 +126,12 @@ jobs:
           test "$PROVIDER" = "${{ matrix.want }}"
           out="$RUNNER_TEMP/fixture/out"
           test "$(jq -r .version "$out/release.json")" = "$VERSION"
-          test "$(jq -r '.releases[0].version' "$out/history.json")" = "$VERSION"
+          # Prereleases stay out of the changelog: no history.json for them.
+          if [ "$TYPE" = "prerelease" ]; then
+            test ! -e "$out/history.json"
+          else
+            test "$(jq -r '.releases[0].version' "$out/history.json")" = "$VERSION"
+          fi
           # Every published statement points at a commit inside the compared range.
           jq -e '[.highlights[], .improvements[], .fixes[], .breaking[]] | all(.commits | length > 0)' "$out/release.json"
 

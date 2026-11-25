@@ -8,6 +8,9 @@ import { renderMarkdown } from "./markdown.js";
 import { TAGLORE_VERSION } from "./meta.js";
 import { buildPromptWithReport, type ContextReport, extractJson } from "./prompt.js";
 import { fillPlaceholders, loadFacts, type ReleaseVars } from "./facts.js";
+import { buildSupport } from "./support.js";
+import { buildVdr } from "./security/vdr.js";
+import { buildEvidenceIndex } from "./evidence-index.js";
 import { compileTerms, evaluateAnswer, repairPrompt, styleIssues, type WritingStandard } from "./repair.js";
 import { copilotProvider } from "./providers/copilot.js";
 import { githubModelsProvider } from "./providers/github-models.js";
@@ -152,6 +155,12 @@ export interface TagloreOptions {
   unreleased?: boolean;
   /** Version label for unreleased notes. Default: "Unreleased". */
   unreleasedLabel?: string;
+  /** Last day of security updates for this release (YYYY-MM-DD), shown to users. */
+  supportUntil?: string;
+  /** Where users report vulnerabilities: an https:// link or an e-mail address. */
+  securityContact?: string;
+  /** Link to this release's SBOM ({version} is filled in). Default: the sbom.cdx.json on the GitHub Release, when the scan ran. */
+  sbomUrl?: string;
   /** @internal Set for the per-tag runs of a backfill. */
   backfillRun?: boolean;
   /** @internal Notes already known to the caller (stored history, earlier backfill runs). */
@@ -269,6 +278,10 @@ async function aiNotes(
     return { notes: ev.trimmed, model: second.model, context };
   }
   throw new Error(`the answer was still invalid after a retry: ${ev.issues.slice(0, 5).join("; ")}`);
+}
+
+function productNameOf(o: TagloreOptions): string {
+  return o.productName ?? o.repository?.split("/")[1] ?? process.env.GITHUB_REPOSITORY?.split("/")[1] ?? "this application";
 }
 
 function standardOf(o: TagloreOptions): WritingStandard {
@@ -500,6 +513,14 @@ export async function runTaglore(opts: TagloreOptions = {}): Promise<TagloreResu
     );
   }
 
+  const publishesRelease = !unreleased && (o.publishGithubRelease ?? true) && !!repository;
+  const support = buildSupport(
+    o,
+    vars,
+    sbom && publishesRelease && serverUrl.startsWith("https://")
+      ? `${serverUrl}/${repository}/releases/download/${encodeURIComponent(to)}/sbom.cdx.json`
+      : null,
+  );
   const notes = ReleaseNotesSchema.parse({
     ...checked.notes,
     schemaVersion: SCHEMA_VERSION,
@@ -510,6 +531,8 @@ export async function runTaglore(opts: TagloreOptions = {}): Promise<TagloreResu
     date: await refDate(to, cwd),
     generator: { name: "taglore", version: TAGLORE_VERSION, provider: providerName, model },
     ...(security ? { security: security.summary } : {}),
+    // Configured support wins; reused notes keep theirs otherwise.
+    ...(support ? { support } : {}),
   });
 
   // 4. Announcement for apps (latest.json)
@@ -531,7 +554,7 @@ export async function runTaglore(opts: TagloreOptions = {}): Promise<TagloreResu
     commits: changes.commits,
     compareUrl,
     includeCommits: o.includeCommits,
-    securitySection: security ? renderSecuritySection(security, o.securityMaxItems) : undefined,
+    securitySection: security ? renderSecuritySection(security, o.securityMaxItems, { product: o.productName ?? repository?.split("/")[1] }) : undefined,
   });
   const files: OutFile[] = [
     { name: "release.json", content: JSON.stringify(notes, null, 2) + "\n", contentType: "application/json", cacheControl: "public, max-age=300" },
@@ -544,6 +567,12 @@ export async function runTaglore(opts: TagloreOptions = {}): Promise<TagloreResu
     files.push(
       { name: "security.json", content: JSON.stringify(security, null, 2) + "\n", contentType: "application/json", cacheControl: "public, max-age=300" },
       { name: "sbom.cdx.json", content: sbom, contentType: "application/vnd.cyclonedx+json", cacheControl: "public, max-age=300" },
+      {
+        name: "vdr.cdx.json",
+        content: buildVdr({ report: security, sboms: imageSbom ? [sbom, imageSbom] : [sbom], product: productNameOf(o) }),
+        contentType: "application/vnd.cyclonedx+json",
+        cacheControl: "public, max-age=300",
+      },
     );
   }
   if (latest) {
@@ -558,7 +587,35 @@ export async function runTaglore(opts: TagloreOptions = {}): Promise<TagloreResu
     files.push({ name: "history.json", content: JSON.stringify(history, null, 2) + "\n", contentType: "application/json", cacheControl: "public, max-age=60" });
   }
 
-  // 5c. Review page (not part of the published files: it lists commit subjects)
+  // 5c. Evidence index: every file above with its SHA-256, the commit, and how the notes were checked.
+  const evidenceIndex = buildEvidenceIndex({
+    product: productNameOf(o),
+    version,
+    previousVersion: from,
+    releaseType,
+    commit: toSha,
+    repository: repository ?? null,
+    links: {
+      release: publishesRelease ? `${serverUrl}/${repository}/releases/tag/${encodeURIComponent(to)}` : null,
+      compare: compareUrl,
+    },
+    notes: {
+      provider: providerName,
+      model,
+      evidenceMode,
+      statements: notes.highlights.length + notes.improvements.length + notes.fixes.length + notes.breaking.length,
+      unverified: evidence.unverified.length,
+      reused: !!reused,
+      styleIssues: remainingStyle.length,
+      contextTruncated: context?.truncated ?? false,
+    },
+    security: security?.summary ?? null,
+    support,
+    files,
+  });
+  files.push({ name: "evidence.json", content: JSON.stringify(evidenceIndex, null, 2) + "\n", contentType: "application/json", cacheControl: "public, max-age=300" });
+
+  // 5d. Review page (not part of the published files: it lists commit subjects)
   if (o.previewFile) {
     const { mkdir, writeFile } = await import("node:fs/promises");
     const { dirname, resolve } = await import("node:path");
@@ -585,10 +642,11 @@ export async function runTaglore(opts: TagloreOptions = {}): Promise<TagloreResu
     } else if (o.publishGithubRelease ?? true) {
       if (!releases) throw new Error("Publishing a GitHub Release needs a token and repository (or set publish-github-release: false).");
       const assets: ReleaseAsset[] = [{ name: RELEASE_ASSET_NAME, content: JSON.stringify(notes, null, 2) + "\n", contentType: "application/json" }];
-      for (const f of files.filter((f) => ["security.json", "sbom.cdx.json", "sbom-image.cdx.json"].includes(f.name))) {
+      for (const f of files.filter((f) => ["security.json", "sbom.cdx.json", "sbom-image.cdx.json", "vdr.cdx.json", "evidence.json"].includes(f.name))) {
         assets.push({ name: f.name, content: f.content, contentType: f.contentType });
       }
-      if (history) assets.push({ name: HISTORY_ASSET_NAME, content: JSON.stringify(history) + "\n", contentType: "application/json" });
+      // Same bytes as history.json, so its hash in evidence.json matches the asset too.
+      if (history) assets.push({ name: HISTORY_ASSET_NAME, content: files.find((f) => f.name === "history.json")!.content, contentType: "application/json" });
       const rel = await releases.publish({
         tag: to,
         name: `${to}: ${notes.title}`,

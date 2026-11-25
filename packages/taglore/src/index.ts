@@ -18,3 +18,7 @@ export { runSecurityScan } from "./security/scan.js";
 export { verifyEvidence, renderEvidenceMarkdown, type EvidenceReport, type EvidenceMode } from "./evidence.js";
 export { buildHistory, HISTORY_ASSET_NAME } from "./history.js";
 export { renderPreview } from "./preview.js";
+export { buildEvidenceIndex, EvidenceIndexSchema, type EvidenceIndex } from "./evidence-index.js";
+export { buildVdr } from "./security/vdr.js";
+export { buildSupport, normalizeContact, renderSupportSection } from "./support.js";
+export { SupportSchema, type Support } from "./schema.js";

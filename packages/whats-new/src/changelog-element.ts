@@ -1,3 +1,5 @@
+import { DEFAULT_SUPPORT_LABELS, latestSupport } from "./core.js";
+import { supportLine } from "./support-dom.js";
 import { DEFAULT_HISTORY_URL, filterReleases, formatDate, loadHistory } from "./core.js";
 import { CSS } from "./styles.js";
 import type { NoteItem, ReleaseNotes } from "./types.js";
@@ -65,6 +67,12 @@ export class TagloreChangelogElement extends HTMLElement {
       input.addEventListener("input", () => this.renderList(input.value));
       root.append(input);
     }
+    const support = supportLine("taglore-cl__support", latestSupport(this.releases), {
+      supportUntil: this.label("support-until", DEFAULT_SUPPORT_LABELS.supportUntil),
+      report: this.label("report", DEFAULT_SUPPORT_LABELS.report),
+      sbom: this.label("sbom", DEFAULT_SUPPORT_LABELS.sbom),
+    }, this.getAttribute("locale") ?? undefined);
+    if (support) root.prepend(support);
     root.append(this.list);
     this.replaceChildren(root);
     this.renderList("");

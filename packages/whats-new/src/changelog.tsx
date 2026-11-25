@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { DEFAULT_HISTORY_URL, filterReleases, formatDate, loadHistory } from "./core.js";
+import { DEFAULT_HISTORY_URL, DEFAULT_SUPPORT_LABELS, filterReleases, formatDate, latestSupport, loadHistory } from "./core.js";
+import { SupportLine } from "./whats-new.js";
 import type { NoteItem, ReleaseNotes } from "./types.js";
 
 export interface ChangelogLabels {
@@ -11,6 +12,10 @@ export interface ChangelogLabels {
   improvements: string;
   fixes: string;
   breaking: string;
+  /** "{date}" is replaced with the end of security support. */
+  supportUntil: string;
+  report: string;
+  sbom: string;
 }
 
 const DEFAULT_LABELS: ChangelogLabels = {
@@ -20,6 +25,7 @@ const DEFAULT_LABELS: ChangelogLabels = {
   improvements: "Improvements",
   fixes: "Fixes",
   breaking: "Action needed",
+  ...DEFAULT_SUPPORT_LABELS,
 };
 
 export interface ChangelogProps {
@@ -81,6 +87,7 @@ export function Changelog({ url = DEFAULT_HISTORY_URL, data, noSearch, announced
 
   return (
     <div className={["taglore-cl", className].filter(Boolean).join(" ")}>
+      <SupportLine support={latestSupport(releases)} labels={l} className="taglore-cl__support" locale={locale} />
       {!noSearch && (
         <input
           type="search"

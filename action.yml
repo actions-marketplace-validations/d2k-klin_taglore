@@ -153,6 +153,15 @@ inputs:
   forbidden-terms:
     description: "Words (whole word, case-insensitive) or /regex/ that must not appear in the notes, comma or newline separated: environment names, codenames. Commit hashes are always checked. A violation gets one corrective retry."
     required: false
+  support-until:
+    description: "Last day of security updates for this release (YYYY-MM-DD). Shown in the notes, release.json and the What's New components (CRA Annex II asks for the end of the support period)."
+    required: false
+  security-contact:
+    description: "Where users report vulnerabilities: an https:// link (e.g. your security policy) or an e-mail address. Shown in the notes and the components."
+    required: false
+  sbom-url:
+    description: "Link to this release's SBOM, {version} is filled in. Default with security-scan: the sbom.cdx.json attached to the GitHub Release."
+    required: false
   writing-standard:
     description: "asd-ste100: write the notes in ASD-STE100 Simplified Technical English (Issue 9). Sentence length (25 words, 20 for breaking-change instructions), sentences per paragraph and semicolons are checked in code like other style rules. English only."
     required: false

@@ -1,3 +1,4 @@
+import { renderSupportSection } from "./support.js";
 import type { Commit } from "./collect.js";
 import type { NoteItem, ReleaseNotes } from "./schema.js";
 
@@ -20,6 +21,7 @@ export function renderMarkdown(
   md += section("🚀 Improvements", n.improvements);
   md += section("🐛 Fixes", n.fixes);
   if (opts.securitySection) md += opts.securitySection;
+  md += renderSupportSection(n.support);
 
   if (opts.includeCommits !== false && opts.commits.length) {
     const list = opts.commits

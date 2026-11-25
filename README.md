@@ -45,7 +45,7 @@ New here? **[Try Taglore in 10 minutes](docs/getting-started.md)**: local previe
 - **The AI output is untrusted input.** A narrow schema, sanitizing, plain-text rendering, and evidence: every statement must point at real commits in the release, or it is reported or removed.
 - **Works with any stack.** Plain JSON and Markdown files that Node, Python, Go, Java, .NET, PHP or nginx can serve, plus a dependency-free web component and a React component.
 - **Fits the pipeline you have.** Release Please, monorepos, immutable releases, locked-down organizations (a single-file CLI with checksums and build provenance).
-- **Security notes per release** (optional): vulnerabilities fixed and introduced since the last release, from Syft and Grype, plus a CycloneDX SBOM.
+- **Security evidence per release** (optional): vulnerabilities fixed and introduced since the last release, from Syft and Grype, a CycloneDX SBOM and VDR, an evidence index with a hash per file, and the support information the EU Cyber Resilience Act asks you to give users.
 
 ## What you get
 
@@ -53,14 +53,14 @@ New here? **[Try Taglore in 10 minutes](docs/getting-started.md)**: local previe
 - **A folder** in your Docker build context: `latest.json`, `release.json`, `history.json`, `RELEASE_NOTES.md`
 - **Your app's What's New dialog**, in any stack: a [web component](examples/apps/any-frontend), a [React component](packages/whats-new), or a few lines in your backend
 - **A changelog page** from `history.json`, with ready-made components
-- **A Security section and SBOM** per release (`security-scan: true`)
+- **A Security section, SBOM, VDR and evidence index** per release (`security-scan: true`), plus end-of-support and security contact for users
 - **A workflow artifact** for a later job, and **S3** for apps or CDNs that fetch notes at runtime
 
 ## Contents
 
 - [How versions are compared](#how-versions-are-compared)
 - [GitHub Copilot setup](#github-copilot-setup)
-- [Recipes](#recipes): [Docker](#docker-any-language) · [What's New dialog](#whats-new-dialog-in-the-frontend) · [Review before publishing](#review-before-publishing-evidence-and-preview) · [Facts](#facts-the-ai-cant-see-in-the-code) · [Style rules](#style-rules-checked-in-code) · [Big releases](#big-releases) · [Unreleased](#unreleased-changes) · [Immutable releases](#immutable-releases-or-no-github-releases-at-all) · [Changelog page](#changelog-page) · [Security](#security-notes-and-sbom-per-release) · [Release Please](#with-release-please) · [Monorepos](#monorepos)
+- [Recipes](#recipes): [Docker](#docker-any-language) · [What's New dialog](#whats-new-dialog-in-the-frontend) · [Review before publishing](#review-before-publishing-evidence-and-preview) · [Facts](#facts-the-ai-cant-see-in-the-code) · [Style rules](#style-rules-checked-in-code) · [Big releases](#big-releases) · [Unreleased](#unreleased-changes) · [Immutable releases](#immutable-releases-or-no-github-releases-at-all) · [Changelog page](#changelog-page) · [CRA user information](#cra-user-information-and-release-evidence) · [Security](#security-notes-and-sbom-per-release) · [Release Please](#with-release-please) · [Monorepos](#monorepos)
 - [Inputs](#inputs) · [CLI](#cli) · [Files and format](#files-and-format)
 - [Security](#security) · [What's tested](#whats-tested) · [Use it with an AI coding agent](#use-it-with-an-ai-coding-agent) · [Contributing](#contributing)
 
@@ -301,6 +301,26 @@ Every run also writes `history.json`: this release followed by the earlier ones,
 
 or in React: `import { Changelog } from "@taglore/whats-new"` and `<Changelog />`. Both have a search box, show patch releases unless `announced-only` / `announcedOnly` is set, and render plain text only.
 
+### CRA user information and release evidence
+
+The EU Cyber Resilience Act asks manufacturers to tell users how long a version gets security updates, where to report vulnerabilities and, if they publish one, where the SBOM is (Annex II). It also asks them to disclose the vulnerabilities a security update fixes (Annex I, Part II). Release notes are where users already look, so Taglore can carry all of it:
+
+```yaml
+- uses: d2k-klin/taglore@v1
+  with:
+    security-scan: true
+    support-until: "2027-12-31"
+    security-contact: https://github.com/acme/app/security/policy   # or an e-mail address
+    # sbom-url: defaults to the sbom.cdx.json on the GitHub Release
+```
+
+- **The notes** get a "Security support" block, and the Security section lists what the release fixes under "Fixed in Acme Web v1.9.0".
+- **`release.json`** gets a `support` object, and **both components** show it: one line in the dialog footer and above the changelog ("Security updates until 31 Dec 2027 · Report a vulnerability · SBOM"). Only `https:` and `mailto:` links are rendered.
+- **`vdr.cdx.json`**: a CycloneDX Vulnerability Disclosure Report built from the same scan, so it always agrees with the notes.
+- **`evidence.json`**: every file of the release with its SHA-256, the commit, the support information and how the notes were checked (provider, evidence mode, unverified statements). It is attached to the release and written to `output-dir`, ready for an auditor or a compliance tool to verify.
+
+Taglore produces evidence; it doesn't certify compliance. Your support period, your vulnerability handling process and the rest of the technical documentation are still yours to define.
+
 ### Security notes and SBOM per release
 
 Add `security-scan: true` and Taglore scans **both versions** with [Syft](https://github.com/anchore/syft) (SBOM) and [Grype](https://github.com/anchore/grype) (vulnerabilities). Both are checked against the same vulnerability database, downloaded once and then frozen, so "fixed" and "introduced" reflect your code changes, not database updates.
@@ -482,6 +502,9 @@ More in [examples/workflows](examples/workflows).
 | `facts-file` | | Per-release facts for the AI, e.g. `docs/release-facts/{version}.md`; missing file = none |
 | `facts-command` | | Command that prints per-release facts; gets `TAGLORE_VERSION`, `TAGLORE_FROM`, `TAGLORE_TO`, `TAGLORE_RELEASE_TYPE` |
 | `forbidden-terms` | | Words or `/regex/` that must not appear in the notes; a hit gets one corrective retry |
+| `support-until` | | Last day of security updates for this release (`YYYY-MM-DD`), shown in the notes and the components |
+| `security-contact` | | Where users report vulnerabilities: an `https://` link or an e-mail address |
+| `sbom-url` | the release's `sbom.cdx.json` | Link to the SBOM shown to users; `{version}` is filled in |
 | `writing-standard` | `none` | `asd-ste100`: ASD-STE100 Simplified Technical English, countable rules checked in code (English only) |
 | `style-check` | `warn` | `strict` fails (nothing published) when a style rule is still broken after the retry |
 | `focus-paths` | | Globs whose diffs go first when a release is larger than `max-diff-kb` |
@@ -536,7 +559,7 @@ npx --package=https://github.com/d2k-klin/taglore/releases/latest/download/taglo
 Locked-down environments that can't use the action, or can't install packages on every run, can use `taglore.mjs`: one file with every dependency inside, attached to each release with `SHA256SUMS` and a signed build provenance attestation.
 
 ```bash
-gh release download v1.7.1 -R d2k-klin/taglore -p taglore.mjs -p SHA256SUMS
+gh release download v1.8.0 -R d2k-klin/taglore -p taglore.mjs -p SHA256SUMS
 sha256sum --check --ignore-missing SHA256SUMS
 gh attestation verify taglore.mjs -R d2k-klin/taglore     # built by this repository's release workflow
 node taglore.mjs generate --to v1.9.0 --dry-run           # Node 20+, nothing else
@@ -556,8 +579,10 @@ Commit the file next to your pipeline, or mirror it, and pin the version you ver
 | `security.json` | With `security-scan`: introduced, fixed and open vulnerabilities, dependency and license changes |
 | `sbom.cdx.json` | With `security-scan`: CycloneDX SBOM of the repository at the released tag |
 | `sbom-image.cdx.json` | With `security-image`: CycloneDX SBOM of the released container image |
+| `vdr.cdx.json` | With `security-scan`: CycloneDX Vulnerability Disclosure Report: every known vulnerability in this version, linked to the affected component, with severity, advisory and fix |
+| `evidence.json` | Every file above with its SHA-256, the commit it was built from, and how the notes were checked ([schema](schema/evidence.schema.json)) |
 
-JSON follows [`schema/release.schema.json`](schema/release.schema.json): `version`, `previousVersion`, `releaseType`, `announce`, `date`, `title`, `summary`, `highlights[]`, `improvements[]`, `fixes[]`, `breaking[]`, `generator`. Generate types for your language from the schema with any JSON Schema tool.
+JSON follows [`schema/release.schema.json`](schema/release.schema.json): `version`, `previousVersion`, `releaseType`, `announce`, `date`, `title`, `summary`, `highlights[]`, `improvements[]`, `fixes[]`, `breaking[]`, `generator`, plus `security` (counts) and `support` (end of support, contact, SBOM link) when configured. Generate types for your language from the schema with any JSON Schema tool.
 
 ## Security
 

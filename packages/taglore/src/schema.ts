@@ -31,6 +31,21 @@ export const AiNotesSchema = z.object({
 export type AiNotes = z.infer<typeof AiNotesSchema>;
 
 /** The file consumed by apps (latest.json / release.json). */
+/**
+ * Security support for users of this release (CRA Annex II style user information):
+ * end of the support period, where to report vulnerabilities, where the SBOM is.
+ * Set by the maintainer (support-until, security-contact, sbom-url), never by the AI.
+ */
+export const SupportSchema = z.object({
+  /** Last day of security updates, YYYY-MM-DD. */
+  until: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
+  /** https: or mailto: link for reporting vulnerabilities. */
+  contact: z.string().regex(/^(https:\/\/|mailto:)/).nullable(),
+  /** https: link to the SBOM of this release. */
+  sbom: z.string().regex(/^https:\/\//).nullable(),
+});
+export type Support = z.infer<typeof SupportSchema>;
+
 export const ReleaseNotesSchema = AiNotesSchema.extend({
   schemaVersion: z.literal(SCHEMA_VERSION),
   version: z.string().min(1),
@@ -48,6 +63,8 @@ export const ReleaseNotesSchema = AiNotesSchema.extend({
   }),
   /** Present when the release was scanned (security-scan: true). Counts only; details are in security.json. */
   security: SecuritySummarySchema.optional(),
+  /** Security support information for users. Present when the maintainer configured it. */
+  support: SupportSchema.optional(),
 });
 export type ReleaseNotes = z.infer<typeof ReleaseNotesSchema>;
 

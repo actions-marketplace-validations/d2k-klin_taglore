@@ -1,4 +1,4 @@
-import { compareVersions, isReleaseNotes, type NoteItem, type ReleaseNotes } from "./types.js";
+import { compareVersions, isReleaseNotes, type NoteItem, type ReleaseNotes, type SupportInfo } from "./types.js";
 
 /** Framework-free logic shared by the React hook and the <taglore-whats-new> element. */
 
@@ -87,4 +87,53 @@ export function filterReleases(releases: ReleaseNotes[], query: string): Release
 export function formatDate(iso: string, locale?: string): string {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString(locale, { year: "numeric", month: "short", day: "numeric" });
+}
+
+/** Only https: and mailto: links are rendered; anything else (javascript:, data:, http:) is dropped. */
+export function safeHref(u: unknown): string | null {
+  if (typeof u !== "string") return null;
+  try {
+    const url = new URL(u);
+    return url.protocol === "https:" || url.protocol === "mailto:" ? url.href : null;
+  } catch {
+    return null;
+  }
+}
+
+export interface SupportLabels {
+  /** "{date}" is replaced with the formatted end date. */
+  supportUntil: string;
+  report: string;
+  sbom: string;
+}
+
+export const DEFAULT_SUPPORT_LABELS: SupportLabels = {
+  supportUntil: "Security updates until {date}",
+  report: "Report a vulnerability",
+  sbom: "SBOM",
+};
+
+export interface SupportPart {
+  kind: "until" | "contact" | "sbom";
+  text: string;
+  href: string | null;
+}
+
+/** The parts of the support line, in display order. Empty when there is nothing to show. */
+export function supportParts(s: SupportInfo | undefined, labels: SupportLabels, locale?: string): SupportPart[] {
+  if (!s) return [];
+  const parts: SupportPart[] = [];
+  if (s.until && /^\d{4}-\d{2}-\d{2}$/.test(s.until)) {
+    parts.push({ kind: "until", text: labels.supportUntil.replace("{date}", formatDate(s.until, locale)), href: null });
+  }
+  const contact = safeHref(s.contact);
+  if (contact) parts.push({ kind: "contact", text: labels.report, href: contact });
+  const sbom = safeHref(s.sbom);
+  if (sbom) parts.push({ kind: "sbom", text: labels.sbom, href: sbom });
+  return parts;
+}
+
+/** The support information of the newest release that has any (history.json is newest first). */
+export function latestSupport(releases: ReleaseNotes[]): SupportInfo | undefined {
+  return releases.find((r) => r.support)?.support;
 }

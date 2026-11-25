@@ -15,6 +15,7 @@ hist={"schemaVersion":1,"releases":[latest,
  rel("v2.3.1","v2.3.0","patch","2026-11-04","Calendar sync fix","A fix for calendar sync after daylight saving time.",[],[],[("Calendar sync","Events no longer shift by one hour after the clock change.")]),
  rel("v2.3.0","v2.2.0","minor","2026-10-21","Shared templates","Teams can now share project templates.",[("Shared templates","Save a project as a template and share it with your team.")],[("Keyboard shortcuts","Press ? to see every shortcut.")],[]),
  rel("v2.0.0","v1.9.0","major","2026-09-02","A new home screen","Your work, today's tasks and recent activity on one screen.",[("New home screen","See everything due today at a glance.")],[],[],[("Old API removed","The v1 API is switched off. Move integrations to the v2 API.")])]}
+latest["support"]={"until":"2027-12-31","contact":"https://fieldbook.example/security","sbom":"https://fieldbook.example/sbom/v2.4.0.json"}
 json.dump(latest,open("release-notes/latest.json","w")); json.dump(hist,open("release-notes/history.json","w"))
 app=open("app.html").read()
 open("index.html","w").write(app.replace("BODY",'<taglore-whats-new src="/release-notes/latest.json" storage-key="demo" show-on-first-visit label-heading="What&#39;s new"></taglore-whats-new>').replace("CONTENT",open("cards.html").read()))

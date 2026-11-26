@@ -1,3 +1,5 @@
+import { DEFAULT_SUPPORT_LABELS } from "./core.js";
+import { supportLine } from "./support-dom.js";
 import "./changelog-element.js";
 import { DEFAULT_STORAGE_KEY, DEFAULT_URL, loadNotes, shouldShow, writeSeen } from "./core.js";
 import { CSS } from "./styles.js";
@@ -11,7 +13,8 @@ import type { NoteItem, ReleaseNotes } from "./types.js";
  *   <taglore-whats-new src="/release-notes/latest.json" storage-key="myapp:whats-new"></taglore-whats-new>
  *
  * Attributes: src, storage-key, show-on-first-visit, no-auto-open, compact, unstyled,
- * label-heading, label-highlights, label-improvements, label-fixes, label-breaking, label-close.
+ * label-heading, label-highlights, label-improvements, label-fixes, label-breaking, label-close,
+ * label-support-until ("{date}" is replaced), label-report, label-sbom.
  * With no-auto-open the dialog never opens by itself: the element gets an `unseen` attribute
  * and fires "taglore:unseen" instead, so the app can show a badge and call show() from a menu.
  * Methods: show(), dismiss(). Property: unseen.
@@ -126,6 +129,12 @@ export class TagloreWhatsNewElement extends HTMLElement {
     const btn = el("button", "taglore-wn__close", this.label("close", "Got it"));
     btn.type = "button";
     btn.addEventListener("click", () => this.dismiss());
+    const support = supportLine("taglore-wn__support", n.support, {
+      supportUntil: this.label("support-until", DEFAULT_SUPPORT_LABELS.supportUntil),
+      report: this.label("report", DEFAULT_SUPPORT_LABELS.report),
+      sbom: this.label("sbom", DEFAULT_SUPPORT_LABELS.sbom),
+    });
+    if (support) footer.append(support);
     footer.append(btn);
 
     d.append(header, body, footer);

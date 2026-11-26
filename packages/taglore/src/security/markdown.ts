@@ -41,7 +41,11 @@ function plural(n: number, one: string, many = `${one}s`): string {
   return `${n} ${n === 1 ? one : many}`;
 }
 
-export function renderSecuritySection(r: SecurityReport, maxItems = 15): string {
+/**
+ * The Security section. Fixed and new vulnerabilities get their own tables; the fixed table
+ * names the product and the version, so users can tell which update to install.
+ */
+export function renderSecuritySection(r: SecurityReport, maxItems = 15, opts: { product?: string } = {}): string {
   const s = r.summary;
   const total = (c: typeof s.open) => Object.values(c).reduce((a, b) => a + b, 0);
   const nIntro = total(s.introduced);
@@ -60,16 +64,23 @@ export function renderSecuritySection(r: SecurityReport, maxItems = 15): string 
   }
   md += nOpen ? `Known vulnerabilities in this version: ${describeCounts(s.open)}.\n\n` : "No known vulnerabilities in this version's dependencies.\n\n";
 
-  const rows = [
-    ...r.introduced.map((v) => ({ mark: "🆕", v })),
-    ...r.fixed.map((v) => ({ mark: "✅", v })),
-  ];
-  // First release: list what is open, since there is nothing to compare against.
-  const list = r.previousVersion ? rows : r.open.map((v) => ({ mark: "⚠️", v }));
-  if (list.length) {
-    md += table(list.slice(0, maxItems));
-    if (list.length > maxItems) md += `\n…and ${list.length - maxItems} more in \`security.json\`.\n`;
+  const version = `${opts.product ? `${cell(opts.product)} ` : ""}${cell(r.version)}`;
+  let budget = maxItems;
+  const block = (heading: string, list: { mark: string; v: Vulnerability }[]) => {
+    if (!list.length) return;
+    const shown = list.slice(0, Math.max(0, budget));
+    budget -= shown.length;
+    md += `**${heading}**\n\n`;
+    if (shown.length) md += table(shown);
+    if (list.length > shown.length) md += `\n…and ${list.length - shown.length} more in \`security.json\`.\n`;
     md += "\n";
+  };
+  if (r.previousVersion) {
+    block(`Fixed in ${version}`, r.fixed.map((v) => ({ mark: "✅", v })));
+    block(`New in ${version}`, r.introduced.map((v) => ({ mark: "🆕", v })));
+  } else {
+    // First release: list what is open, since there is nothing to compare against.
+    block(`Known in ${version}`, r.open.map((v) => ({ mark: "⚠️", v })));
   }
 
   const c = s.components;
@@ -83,7 +94,7 @@ export function renderSecuritySection(r: SecurityReport, maxItems = 15): string 
   for (const w of r.warnings) md += `> ⚠️ ${cell(w)}\n\n`;
   const repoPart = r.sources.paths.length ? `the lockfiles and manifests in ${r.sources.paths.map(cell).join(", ")}` : "the repository's lockfiles and manifests";
   const what = r.sources.image ? `${repoPart} and the image ${cell(r.sources.image)}` : repoPart;
-  const files = r.sources.image ? "security.json, sbom.cdx.json and sbom-image.cdx.json" : "security.json and sbom.cdx.json";
-  md += `<sub>Scanned ${what} with Syft ${cell(r.tools.syft ?? "?")} and Grype ${cell(r.tools.grype ?? "?")}; both versions were checked against the same vulnerability database. The full report and the CycloneDX SBOMs are attached as ${files}.</sub>\n\n`;
+  const files = r.sources.image ? "security.json, vdr.cdx.json, sbom.cdx.json and sbom-image.cdx.json" : "security.json, vdr.cdx.json and sbom.cdx.json";
+  md += `<sub>Scanned ${what} with Syft ${cell(r.tools.syft ?? "?")} and Grype ${cell(r.tools.grype ?? "?")}; both versions were checked against the same vulnerability database. The full report, the CycloneDX VDR and the SBOMs are attached as ${files}.</sub>\n\n`;
   return md;
 }

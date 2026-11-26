@@ -26,6 +26,17 @@ export interface ReleaseNotes {
   fixes: NoteItem[];
   breaking: NoteItem[];
   generator: { name: "taglore"; version: string; provider: string; model: string | null };
+  /** Security support for users: end of support, where to report vulnerabilities, where the SBOM is. */
+  support?: SupportInfo;
+}
+
+export interface SupportInfo {
+  /** Last day of security updates, YYYY-MM-DD. */
+  until: string | null;
+  /** https: or mailto: link for reporting vulnerabilities. */
+  contact: string | null;
+  /** https: link to the SBOM. */
+  sbom: string | null;
 }
 
 export function isReleaseNotes(v: unknown): v is ReleaseNotes {

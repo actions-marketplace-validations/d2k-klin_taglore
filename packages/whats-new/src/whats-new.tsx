@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
-import type { NoteItem, ReleaseNotes } from "./types.js";
+import { DEFAULT_SUPPORT_LABELS, type SupportLabels, supportParts } from "./core.js";
+import type { NoteItem, ReleaseNotes, SupportInfo } from "./types.js";
 import { useWhatsNew, type UseWhatsNewOptions, type WhatsNewState } from "./use-whats-new.js";
 
 export interface WhatsNewLabels {
@@ -11,6 +12,10 @@ export interface WhatsNewLabels {
   fixes: string;
   breaking: string;
   close: string;
+  /** "{date}" is replaced with the end of security support. */
+  supportUntil: string;
+  report: string;
+  sbom: string;
 }
 
 const DEFAULT_LABELS: WhatsNewLabels = {
@@ -20,7 +25,30 @@ const DEFAULT_LABELS: WhatsNewLabels = {
   fixes: "Fixes",
   breaking: "Action needed",
   close: "Got it",
+  ...DEFAULT_SUPPORT_LABELS,
 };
+
+/** End of support, vulnerability contact and SBOM link; only https: and mailto: links are rendered. */
+export function SupportLine({ support, labels, className, locale }: { support?: SupportInfo; labels: SupportLabels; className: string; locale?: string }) {
+  const parts = supportParts(support, labels, locale);
+  if (!parts.length) return null;
+  return (
+    <p className={className}>
+      {parts.map((p, i) => (
+        <span key={p.kind}>
+          {i > 0 && " · "}
+          {p.href ? (
+            <a href={p.href} rel="noopener noreferrer" target="_blank">
+              {p.text}
+            </a>
+          ) : (
+            p.text
+          )}
+        </span>
+      ))}
+    </p>
+  );
+}
 
 export interface WhatsNewProps extends UseWhatsNewOptions {
   labels?: Partial<WhatsNewLabels>;
@@ -108,6 +136,7 @@ export function WhatsNew({ labels, className, compact, children, onDismiss, ...o
         {!compact && <Section title={l.fixes} items={n.fixes} kind="fixes" />}
       </div>
       <footer className="taglore-wn__footer">
+        <SupportLine support={n.support} labels={l} className="taglore-wn__support" />
         <button type="button" className="taglore-wn__close" onClick={close}>
           {l.close}
         </button>

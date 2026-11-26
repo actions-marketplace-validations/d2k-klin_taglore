@@ -22,6 +22,7 @@ The file comes from the Taglore action (`web-components: true` writes it to `out
 | `compact` | off | Summary and highlights only |
 | `unstyled` | off | Don't inject the default CSS |
 | `label-heading`, `label-highlights`, `label-improvements`, `label-fixes`, `label-breaking`, `label-close` | English | Text labels |
+| `label-support-until`, `label-report`, `label-sbom` | English | Labels of the security support line (`{date}` is replaced); shown when the notes carry `support` |
 
 Methods `show()` and `dismiss()`, property `unseen`; events `taglore:unseen`, `taglore:open` and `taglore:dismiss` (detail = the notes).
 
